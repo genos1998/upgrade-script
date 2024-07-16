@@ -1,0 +1,47 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: upgrade-job
+spec:
+  selector:
+  template:
+    metadata:
+      labels:
+        batch.kubernetes.io/job-name: upgrade-job
+        job-name: upgrade-job
+    spec:
+      containers:
+      - image: genos1998/upgrade-script:v0.0.15
+        imagePullPolicy: IfNotPresent
+        name: upgrade-job
+        env:
+          - name: S3_ENDPOINT_URL
+            value: https://ssd-jul10-minio.aoa.oes.opsmx.org/
+          - name: AWS_ACCESS_KEY_ID
+            value: spinnakeradmin
+          - name: AWS_SECRET_ACCESS_KEY
+            value: spinnakeradmin
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - name: datadir
+          mountPath: /app/dgraph
+        - name: upgrade-job-volume
+          mountPath: /app/config/upgrade-job.yaml
+          subPath: upgrade-job.yaml
+        - name: scanresult
+          mountPath: /app/scanResult
+      restartPolicy: Never
+      volumes:
+      - name: datadir
+        persistentVolumeClaim:
+          claimName: datadir-dgraph-0
+      - name: upgrade-job-volume
+        configMap:
+          name: upgrade-job
+          items:
+            - key: upgrade-job.yaml
+              path: upgrade-job.yaml
+          defaultMode: 420
+      - name: scanresult
+

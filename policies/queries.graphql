@@ -1,0 +1,169 @@
+query checkIfTagExists(
+    $tagName: String!
+    $tagValue: String!
+    $createdBy: String!
+) {
+    queryTag(
+        filter: {
+            tagName: { eq: $tagName }
+            tagValue: { eq: $tagValue }
+            createdBy: { eq: $createdBy }
+        }
+    ) {
+        id
+    }
+}
+
+query getLastTagId {
+    aggregateTag {
+		count
+	}
+}
+
+mutation addTag($tags:[AddTagInput!]!) {
+    addTag(input: $tags) {
+        numUids
+    }
+}
+
+query checkIfPolicyNameExists($policyName: String!, $orgId: String!) {
+    queryPolicyDefinition(filter: { policyName: { eq: $policyName } }) @cascade {
+        id
+        policyName
+        stage
+        category
+        ownerOrg(filter: { id: { eq: $orgId } }) {
+            id
+        }
+    }
+}
+
+query getLastPolicyId($organizationId: String!) {
+    queryOrganization(filter: { id: { eq: $organizationId } }) {
+        policiesAggregate {
+            count
+        }
+    }
+}
+
+mutation addPolicyDefinition ($input: [AddPolicyDefinitionInput!]!) {
+	addPolicyDefinition(input: $input) {
+		numUids
+	}
+}
+
+query checkIfExactPolicyDefinitionExists(
+    $policyName: String!
+    $category: String!
+    $stage: String!
+    $description: String!
+    $scheduledPolicy: Boolean!
+    $script: String!
+    $variables: String!
+    $conditionName: String!
+    $suggestion: String!
+    $orgId: String!
+) {
+    queryPolicyDefinition(
+        filter: {
+            policyName: { eq: $policyName }
+            category: { eq: $category }
+            stage: { eq: $stage }
+            description: { eq: $description }
+            scheduledPolicy: $scheduledPolicy
+            script: { eq: $script }
+            variables: { eq: $variables }
+            conditionName: { eq: $conditionName }
+            suggestion: { eq: $suggestion }
+        }
+    ) @cascade {
+        id
+        ownerOrg(filter: { id: { eq: $orgId } }) {
+            id
+        }
+    }
+}
+
+mutation updatePolicyDefinition(
+    $policyId: String!
+    $category: String!
+    $stage: String!
+    $description: String!
+    $scheduledPolicy: Boolean!
+    $script: String!
+    $variables: String!
+    $conditionName: String!
+    $suggestion: String!
+    $updatedAt: DateTime!
+) {
+    updatePolicyDefinition(
+        input: {
+            filter: { id: { eq: $policyId } }
+            set: {
+                category: $category
+                stage: $stage
+                description: $description
+                scheduledPolicy: $scheduledPolicy
+                script: $script
+                variables: $variables
+                conditionName: $conditionName
+                suggestion: $suggestion
+                updatedAt: $updatedAt
+            }
+        }
+    ) {
+        numUids
+    }
+}
+
+query checkIfPolicyEnforcementExists(
+    $datasourceTool: String!
+    $policyId: String!
+) {
+    queryPolicyEnforcement(filter: { datasourceTool: { eq: $datasourceTool } }) @cascade(fields: ["policy"]) {
+        id
+        conditionValue
+        policy(filter: { id: { eq: $policyId } }) {
+            id
+        }
+        tags {
+            id
+        }
+    }
+}
+
+mutation addPolicyEnforcement ($input: [AddPolicyEnforcementInput!]!) {
+	addPolicyEnforcement(input: $input) {
+		numUids
+	}
+}
+
+mutation updatePolicyEnforcement(
+    $conditionValue: String!
+    $policyEnfId: ID!
+    $updatedAt: DateTime!
+) {
+    updatePolicyEnforcement(
+        input: {
+            set: { conditionValue: $conditionValue, updatedAt: $updatedAt }
+            filter: { id: [$policyEnfId] }
+        }
+    ) {
+        numUids
+    }
+}
+
+mutation assignTagsToPolicy(
+    $policyEnforcementId: ID!
+    $tags: TagRef!
+    $updatedAt: DateTime!
+) {
+    updatePolicyEnforcement(
+        input: {
+            filter: { id: [$policyEnforcementId] }
+            set: { tags: [$tags], updatedAt: $updatedAt }
+        }
+    ) {
+        numUids
+    }
+}

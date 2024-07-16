@@ -1,0 +1,107 @@
+query QuerySecurityIssue(
+    $alertTitle: String!
+    $alertMsg: String!
+    $suggestion: String!
+    $severity: Severity!
+    $errorMsg: String!
+    $action: String!
+) {
+    querySecurityIssue(
+        filter: {
+            AlertTitle: { eq: $alertTitle }
+            AlertMessage: { eq: $alertMsg }
+            Suggestions: { eq: $suggestion }
+            Severity: { eq: $severity }
+            Action: { eq: $action }
+            Error: { eq: $errorMsg }
+        }
+    ) {
+        id
+        CreatedAt
+        UpdatedAt
+    }
+}
+
+mutation AddSecurityIssue($input: AddSecurityIssueInput!) {
+    addSecurityIssue(input: [$input]) {
+        securityIssue{
+            id
+        }
+    }
+}
+
+mutation UpdateSecurityIssue(
+    $securityIssue: ID!
+    $createdAt: DateTime
+    $updatedAt: DateTime
+) {
+    updateSecurityIssue(
+        input: {
+            set: { CreatedAt: $createdAt, UpdatedAt: $updatedAt }
+            filter: { id: [$securityIssue] }
+        }
+    ) {
+        numUids
+    }
+}
+
+mutation UpdateRunHistory($runHistoryId: ID!, $securityIssueId: ID!) {
+    updateRunHistory(
+        input: {
+            filter: { id: [$runHistoryId] }
+            set: { securityIssue: { id: $securityIssueId } }
+        }
+    ) {
+        numUids
+    }
+}
+
+query AppEnvTools {
+	queryApplicationEnvironment {
+        id
+        deployments(order: { asc: deployedAt }) {
+            id
+            policyRunHistory(order: { asc: CreatedAt }) {
+                id
+                DatasourceTool
+            }
+        }
+    }
+}
+
+mutation UpdateApplicationEnvironmentWithTools(
+    $id: String!
+    $tools: [String!]!
+) {
+    updateApplicationEnvironment(
+        input: { filter: { id: { eq: $id } },set: { toolsUsed: $tools } }
+    ) {
+        numUids
+    }
+}
+
+query QueryApplicationDeploymentWArtifact {
+    queryApplicationDeployment(order: { asc: deployedAt }) {
+        id
+        artifact {
+            id
+            artifactDeployment {
+                id
+            }
+        }
+    }
+}
+
+mutation UpdateArtifactWDeploymentIds(
+    $artifactId: String!
+    $deploymentRefs: [ApplicationDeploymentRef!]!
+) {
+    updateArtifact(
+        input: {
+            filter: { id: { eq: $artifactId } }
+            set: { artifactDeployment: $deploymentRefs }
+        }
+    ) {
+        numUids
+    }
+}

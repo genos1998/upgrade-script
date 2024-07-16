@@ -1,0 +1,30 @@
+query checkIfFeatureRecordExists($featType: String!, $scan: String!) {
+    queryFeatureMode(filter: { type: { eq: $featType }, scan: { eq: $scan } }) {
+        id
+    }
+}
+
+mutation addNewRecordFeatureTable(
+    $id: String!
+    $orgId: String!
+    $scan: String!
+    $featType: String!
+    $category: String!
+    $enabled: Boolean!
+    $ts: DateTime!
+) {
+    addFeatureMode(
+        input: {
+            id: $id
+            organization: { id: $orgId }
+            scan: $scan
+            type: $featType
+            enabled: $enabled
+            category: $category
+            createdAt: $ts
+            updatedAt: $ts
+        }
+    ) {
+        numUids
+    }
+}

@@ -1,0 +1,5 @@
+query GetOrgId {
+    queryOrganization {
+        id
+    }
+}

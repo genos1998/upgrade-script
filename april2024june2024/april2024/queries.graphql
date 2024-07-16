@@ -1,0 +1,16 @@
+query QueryRunHistory {
+	queryRunHistory(order: { asc: CreatedAt }, filter: { Pass: false }) {
+		id
+		AlertTitle
+		AlertMessage
+		Suggestions
+		Error
+        Severity
+		CreatedAt
+		UpdatedAt
+		Action
+		JiraUrl
+		Status
+        Reason
+	}
+}

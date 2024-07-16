@@ -1,0 +1,17 @@
+schema: schema.graphql
+operations:
+- queries.graphql
+generated: schema-generated.go
+package: june2024
+use_struct_references: true
+bindings:
+  Boolean:
+    type: "*bool"
+  DateTime:
+    type: "*time.Time"
+  Int64:
+    type: int64
+  Int: 
+    type: "*int"
+  ID:
+    type: "*string"

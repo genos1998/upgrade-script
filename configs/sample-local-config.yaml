@@ -1,0 +1,4 @@
+prodGraphQLAddr: "http://localhost:8080"
+prodDgraphToken: ""
+upgradeToVersion: "June2024"
+remoteDgraphRestoreUrl: ""
