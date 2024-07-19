@@ -12,6 +12,17 @@ func allChecksForExpDgraph(schema SchemaOrder) error {
 		return fmt.Errorf("expGraphQLAddr is required")
 	}
 
+	expTokenBytes, err := readFilePath(expTokenPath)
+	if err != nil {
+		return fmt.Errorf("readFilePath: expTokenBytes: err: %s", err.Error())
+	}
+
+	if expTokenBytes == nil {
+		return fmt.Errorf("readFilePath: expTokenBytes: err: empty no token")
+	}
+
+	Conf.ExpDgraphToken = string(expTokenBytes)
+
 	if Conf.ExpDgraphToken == "" {
 		return fmt.Errorf("expDgraphToken is required")
 	}

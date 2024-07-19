@@ -15,7 +15,6 @@ import (
 var (
 	appName    = "upgrade-job"
 	configFile = flag.String("configFile", "/app/config/"+appName+".yaml", "Configuration file location")
-	//configFile = flag.String("configFile", "/home/dell/upgradationScript/config.yaml", "Configuration file location")
 )
 
 func main() {

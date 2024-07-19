@@ -57,7 +57,6 @@ func StartUpgrade() error {
 func beginProcessOfUpgrade(upgradeTo SchemaOrder) error {
 
 	prodGraphqlClient := graphqlfunc.NewClient(Conf.ProdGraphQLAddr, Conf.ProdDgraphToken)
-	expGraphqlClient := graphqlfunc.NewClient(Conf.ExpGraphQLAddr, Conf.ExpDgraphToken)
 
 	switch upgradeTo {
 	case June2024Version:
@@ -65,6 +64,8 @@ func beginProcessOfUpgrade(upgradeTo SchemaOrder) error {
 		if err := allChecksForExpDgraph(June2024Version); err != nil {
 			return err
 		}
+
+		expGraphqlClient := graphqlfunc.NewClient(Conf.ExpGraphQLAddr, Conf.ExpDgraphToken)
 
 		return april2024june2024.UpgradeToJune2024(Conf.ProdGraphQLAddr, Conf.ProdDgraphToken, Conf.ExpGraphQLAddr, Conf.RemoteDgraphRestoreUrl, prodGraphqlClient, expGraphqlClient)
 	}

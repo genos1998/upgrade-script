@@ -1,6 +1,7 @@
 package common
 
 import (
+	"fmt"
 	"os"
 	"strings"
 	"upgradationScript/logger"
@@ -18,17 +19,30 @@ type Configuration struct {
 	RemoteDgraphRestoreUrl string `json:"remoteDgraphRestoreUrl,omitempty" yaml:"remoteDgraphRestoreUrl,omitempty"`
 }
 
+const (
+	prodTokenPath = "/app/secrets/prod-token/token"
+	expTokenPath  = "/app/secrets/exp-token/token"
+)
+
 var (
 	Conf             *Configuration
 	TokenVerifier    *ssdjwtauth.Verifier
 	UpgradeToVersion SchemaOrder
 )
 
+func readFilePath(path string) ([]byte, error) {
+	key, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("error while reading file %s err:  %s", path, err.Error())
+	}
+	return key, nil
+}
+
 func LoadConfigurationFile(confPath string) {
 
-	buf, err := os.ReadFile(confPath)
+	buf, err := readFilePath(confPath)
 	if err != nil {
-		logger.Logger.Sugar().Fatalw("os.ReadFile", "error", err.Error())
+		logger.Logger.Sugar().Fatalw("readFilePath", "error", err.Error())
 	}
 
 	if err := yaml.Unmarshal(buf, &Conf); err != nil {
@@ -38,6 +52,17 @@ func LoadConfigurationFile(confPath string) {
 	if strings.TrimSpace(Conf.ProdGraphQLAddr) == "" {
 		logger.Logger.Sugar().Fatalw("prodGraphQLAddr is empty Please provide")
 	}
+
+	prodTokenBytes, err := readFilePath(prodTokenPath)
+	if err != nil {
+		logger.Logger.Sugar().Fatalw("readFilePath: prodTokenPath: err: %s", err.Error())
+	}
+
+	if prodTokenBytes == nil {
+		logger.Logger.Sugar().Fatalw("readFilePath: prodTokenPath: err: empty no token")
+	}
+
+	Conf.ProdDgraphToken = string(prodTokenBytes)
 
 	if strings.TrimSpace(Conf.ProdDgraphToken) == "" {
 		logger.Logger.Sugar().Fatalw("prodDgraphToken is empty Please provide")
