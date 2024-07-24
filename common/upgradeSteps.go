@@ -3,10 +3,12 @@ package common
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"upgradationScript/april2024june2024"
 	featuretable "upgradationScript/featureTable"
 	graphqlfunc "upgradationScript/graphqlFunc"
+	"upgradationScript/june2024june2024v2"
 
 	"upgradationScript/logger"
 	policyingenstionscript "upgradationScript/policies"
@@ -28,6 +30,15 @@ func StartUpgrade() error {
 	schemaVersion := getTheSchemaVersion(schema)
 
 	logger.Sl.Infof("Current Schema: %s", schemaVersion.NameOfSchema())
+
+	if schemaVersion == UnIdentifiedVersion && strings.TrimSpace(Conf.UpgradeFromVersion) == "" {
+		return fmt.Errorf("schema version not identified")
+	}
+
+	if schemaVersion == UnIdentifiedVersion && Conf.UpgradeFromVersion != "" {
+		logger.Logger.Info("---------------Could'nt Identify Schema version using the provided config------------------")
+		schemaVersion = UpgradeFromVersion
+	}
 
 	if checkIfSchemaUpgradeNotPossible(schemaVersion) {
 		return fmt.Errorf("cannot downgrade schema version. The current schema is at higher version than asked for")
@@ -68,6 +79,10 @@ func beginProcessOfUpgrade(upgradeTo SchemaOrder) error {
 		expGraphqlClient := graphqlfunc.NewClient(Conf.ExpGraphQLAddr, Conf.ExpDgraphToken)
 
 		return april2024june2024.UpgradeToJune2024(Conf.ProdGraphQLAddr, Conf.ProdDgraphToken, Conf.ExpGraphQLAddr, Conf.RemoteDgraphRestoreUrl, prodGraphqlClient, expGraphqlClient)
+
+	case June2024Version2:
+		return june2024june2024v2.UpgradeToJune2024V2(Conf.ProdGraphQLAddr, Conf.ProdDgraphToken, prodGraphqlClient)
+
 	}
 
 	logger.Sl.Debugf("no upgrade steps for %s", upgradeTo.NameOfSchema())

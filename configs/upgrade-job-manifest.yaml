@@ -11,7 +11,7 @@ spec:
         job-name: upgrade-job
     spec:
       containers:
-      - image: genos1998/upgrade-script:v0.0.15
+      - image: genos1998/upgrade-script:v0.0.30
         imagePullPolicy: IfNotPresent
         name: upgrade-job
         env:
@@ -31,8 +31,15 @@ spec:
           subPath: upgrade-job.yaml
         - name: scanresult
           mountPath: /app/scanResult
+        - name: token
+          readOnly: true
+          mountPath: /app/secrets/prod-token/
       restartPolicy: Never
       volumes:
+      - name: token
+        secret:
+          secretName: ssd-opa-token
+          defaultMode: 420
       - name: datadir
         persistentVolumeClaim:
           claimName: datadir-dgraph-0
