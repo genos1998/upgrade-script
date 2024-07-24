@@ -2330,263 +2330,128 @@ var scriptMap = map[int]string{
 
 	43: `
 	package opsmx
-
 	import future.keywords.in
-	
+
+	default score = ""
+
 	rating_map := {
-	  "A": "5.0",
-	  "B": "4.0",
-	  "C": "3.0",
-	  "D": "2.0",
-	  "E": "1.0"
+	"A": "1.0",
+	"B": "2.0",
+	"C": "3.0",
+	"D": "4.0",
+	"E": "5.0"
 	}
-	
+
 	required_rating_name := concat("", ["new_", lower(split(input.conditions[0].condition_name, " ")[1]), "_rating"])
 	required_rating_score := rating_map[split(input.conditions[0].condition_name, " ")[3]]
-	
-	request_url = sprintf("%s/api/measures/component?metricKeys=%s&component=%s", [input.metadata.ssd_secret.sonarQube_creds.url, required_rating_name, input.metadata.sonarqube_projectKey])
-	
+
+	complete_url = concat("",[input.metadata.toolchain_addr,"api/v1/scanResult?fileName=analysis_", input.metadata.owner, "_", input.metadata.repository, "_", input.metadata.build_id, "_sonarqube.json&scanOperation=sonarqubescan"])
+	download_url = concat("",["tool-chain/api/v1/scanResult?fileName=analysis_", input.metadata.owner, "_", input.metadata.repository, "_", input.metadata.build_id, "_sonarqube.json&scanOperation=sonarqubescan"] )
+
 	request = {
-		"method": "GET",
-		"url": request_url,
-		"headers": {
-			"Authorization": sprintf("Bearer %v", [input.metadata.ssd_secret.sonarQube_creds.token]),
-		},
-	}
-	default response = ""
-	response = http.send(request)
-	
-	deny[{"alertMsg": msg, "suggestion": sugg, "error": error}]{
-	  input.metadata.sonarqube_projectKey == ""
-	  msg := ""
-	  error := "Project name not provided."
-	  sugg := "Verify the integration of Sonarqube in SSD is configured properly."
-	}
-	
-	deny[{"alertMsg": msg, "suggestion": sugg, "error": error}]{
-	  response == ""
-	  msg := ""
-	  error := "Response not received."
-	  sugg := "Kindly verify the endpoint provided and the reachability of the endpoint."
-	}
-	
-	deny[{"alertMsg": msg, "suggestion": sugg, "error": error}]{
-	  response.status_code == 500
-	  msg := ""
-	  error := "Sonarqube host provided is not reponding or is not reachable." 
-	  sugg := "Kindly verify the configuration of sonarqube endpoint and reachability of the endpoint."
-	}
-	
-	deny[{"alertMsg": msg, "suggestion": sugg, "error": error}]{
-		response.status_code == 404
-		not contains(error_message, "Component key")
-		msg := ""
-		error := sprintf("%s %v", [response.status, response.body.errors[_].msg])
-		sugg := sprintf("Please add the Reliability metrics keys for the project %s.", [input.metadata.sonarqube_projectKey])
+			"method": "GET",
+			"url": complete_url
 	}
 
+	response = http.send(request)
+	score = [response.body.measures[i].period.value | response.body.measures[i].metric == "new_reliability_rating"][0]
+
 	deny[{"alertMsg": msg, "suggestion": sugg, "error": error}]{
-	  response.status_code == 404
-	  msg := ""
-	  error := sprintf("Error: 404 Not Found. Project not configured for repository %s.", [input.metadata.sonarqube_projectKey])
-	  sugg := sprintf("Please configure project %s in SonarQube.", [input.metadata.sonarqube_projectKey])
+	score == ""
+	msg := sprintf("Required Metric %v for sonarqube project could not be obtained.", [required_rating_name])
+	sugg := "Kindly verify if the token provided has permissions to read the quality metrics. Also, verify if the required quality metrics are available for the project."
+	error := sprintf("Required Metric %v for sonarqube project could not be obtained.", [required_rating_name])
 	}
-	
-	deny[{"alertMsg": msg, "suggestion": sugg, "error": error}]{
-	  response.status_code == 403
-	  error := sprintf("Error: 403 Forbidden. Provided Token does not have privileges to read status of project %s.", [input.metadata.sonarqube_projectKey])
-	  msg := ""
-	  sugg := sprintf("Kindly verify the access token provided is correct and have required privileges to read status of project %s.", [input.metadata.sonarqube_projectKey])
-	}
-	
-	deny[{"alertMsg": msg, "suggestion": sugg, "error": error}]{
-	  not response.status_code in [500, 404, 403, 200, 302]
-	  error := sprintf("Error: %v: %v", [response.status_code])
-	  msg := ""
-	  sugg := sprintf("Kindly rectify the error while fetching %s project status.", [input.metadata.sonarqube_projectKey])
-	}
-	
-	deny[{"alertMsg": msg, "suggestion": sugg, "error": error}]{
-	  response.status_code in [200, 302]
-	  score = response.body.component.measures[0].period.value
-	  score == required_rating_score
-	  msg := sprintf("The SonarQube metric %s stands at %s for project %s, falling short of the expected value.", [required_rating_name, score, input.metadata.sonarqube_projectKey])
-	  sugg := sprintf("Adhere to code security standards to improve score for project %s.", [input.metadata.sonarqube_projectKey])
-	  error := ""
+
+	deny[{"alertMsg": msg, "suggestion": sugg, "error": error, "fileApi": download_url}]{
+	score == required_rating_score
+	msg := sprintf("The SonarQube metric %s stands at %s for project %s, falling short of the expected value.", [required_rating_name, score, input.metadata.sonarqube_projectKey])
+	sugg := sprintf("Adhere to code security standards to improve score for project %s.", [input.metadata.sonarqube_projectKey])
+	error := ""
 	}`,
 
 	44: `
 	package opsmx
-
 	import future.keywords.in
-	
+
+	default score = ""
+
 	rating_map := {
-	  "A": "5.0",
-	  "B": "4.0",
-	  "C": "3.0",
-	  "D": "2.0",
-	  "E": "1.0"
+	"A": "1.0",
+	"B": "2.0",
+	"C": "3.0",
+	"D": "4.0",
+	"E": "5.0"
 	}
-	
+
 	required_rating_name := concat("", ["new_", lower(split(input.conditions[0].condition_name, " ")[1]), "_rating"])
 	required_rating_score := rating_map[split(input.conditions[0].condition_name, " ")[3]]
-	
-	request_url = sprintf("%s/api/measures/component?metricKeys=%s&component=%s", [input.metadata.ssd_secret.sonarQube_creds.url, required_rating_name, input.metadata.sonarqube_projectKey])
-	
+
+	complete_url = concat("",[input.metadata.toolchain_addr,"api/v1/scanResult?fileName=analysis_", input.metadata.owner, "_", input.metadata.repository, "_", input.metadata.build_id, "_sonarqube.json&scanOperation=sonarqubescan"])
+	download_url = concat("",["tool-chain/api/v1/scanResult?fileName=analysis_", input.metadata.owner, "_", input.metadata.repository, "_", input.metadata.build_id, "_sonarqube.json&scanOperation=sonarqubescan"] )
+
 	request = {
-		"method": "GET",
-		"url": request_url,
-		"headers": {
-			"Authorization": sprintf("Bearer %v", [input.metadata.ssd_secret.sonarQube_creds.token]),
-		},
-	}
-	default response = ""
-	response = http.send(request)
-	
-	deny[{"alertMsg": msg, "suggestion": sugg, "error": error}]{
-	  input.metadata.sonarqube_projectKey == ""
-	  msg := ""
-	  error := "Project name not provided."
-	  sugg := "Verify the integration of Sonarqube in SSD is configured properly."
-	}
-	
-	deny[{"alertMsg": msg, "suggestion": sugg, "error": error}]{
-	  response == ""
-	  msg := ""
-	  error := "Response not received."
-	  sugg := "Kindly verify the endpoint provided and the reachability of the endpoint."
-	}
-	
-	deny[{"alertMsg": msg, "suggestion": sugg, "error": error}]{
-	  response.status_code == 500
-	  msg := ""
-	  error := "Sonarqube host provided is not reponding or is not reachable." 
-	  sugg := "Kindly verify the configuration of sonarqube endpoint and reachability of the endpoint."
-	}
-	
-	deny[{"alertMsg": msg, "suggestion": sugg, "error": error}]{
-		response.status_code == 404
-		not contains(error_message, "Component key")
-		msg := ""
-		error := sprintf("%s %v", [response.status, response.body.errors[_].msg])
-		sugg := sprintf("Please add the Reliability metrics keys for the project %s.", [input.metadata.sonarqube_projectKey])
+			"method": "GET",
+			"url": complete_url
 	}
 
+	response = http.send(request)
+	score = [response.body.measures[i].period.value | response.body.measures[i].metric == "new_reliability_rating"][0]
+
 	deny[{"alertMsg": msg, "suggestion": sugg, "error": error}]{
-	  response.status_code == 404
-	  msg := ""
-	  error := sprintf("Error: 404 Not Found. Project not configured for repository %s.", [input.metadata.sonarqube_projectKey])
-	  sugg := sprintf("Please configure project %s in SonarQube.", [input.metadata.sonarqube_projectKey])
+	score == ""
+	msg := sprintf("Required Metric %v for sonarqube project could not be obtained.", [required_rating_name])
+	sugg := "Kindly verify if the token provided has permissions to read the quality metrics. Also, verify if the required quality metrics are available for the project."
+	error := sprintf("Required Metric %v for sonarqube project could not be obtained.", [required_rating_name])
 	}
-	
-	deny[{"alertMsg": msg, "suggestion": sugg, "error": error}]{
-	  response.status_code == 403
-	  error := sprintf("Error: 403 Forbidden. Provided Token does not have privileges to read status of project %s.", [input.metadata.sonarqube_projectKey])
-	  msg := ""
-	  sugg := sprintf("Kindly verify the access token provided is correct and have required privileges to read status of project %s.", [input.metadata.sonarqube_projectKey])
-	}
-	
-	deny[{"alertMsg": msg, "suggestion": sugg, "error": error}]{
-	  not response.status_code in [500, 404, 403, 200, 302]
-	  error := sprintf("Error: %v: %v", [response.status_code])
-	  msg := ""
-	  sugg := sprintf("Kindly rectify the error while fetching %s project status.", [input.metadata.sonarqube_projectKey])
-	}
-	
-	deny[{"alertMsg": msg, "suggestion": sugg, "error": error}]{
-	  response.status_code in [200, 302]
-	  score = response.body.component.measures[0].period.value
-	  score == required_rating_score
-	  msg := sprintf("The SonarQube metric %s stands at %s for project %s, falling short of the expected value.", [required_rating_name, score, input.metadata.sonarqube_projectKey])
-	  sugg := sprintf("Adhere to code security standards to improve score for project %s.", [input.metadata.sonarqube_projectKey])
-	  error := ""
+
+	deny[{"alertMsg": msg, "suggestion": sugg, "error": error, "fileApi": download_url}]{
+	score == required_rating_score
+	msg := sprintf("The SonarQube metric %s stands at %s for project %s, falling short of the expected value.", [required_rating_name, score, input.metadata.sonarqube_projectKey])
+	sugg := sprintf("Adhere to code security standards to improve score for project %s.", [input.metadata.sonarqube_projectKey])
+	error := ""
 	}`,
 
 	45: `
 	package opsmx
-
 	import future.keywords.in
-	
+
+	default score = ""
+
 	rating_map := {
-	  "A": "5.0",
-	  "B": "4.0",
-	  "C": "3.0",
-	  "D": "2.0",
-	  "E": "1.0"
+	"A": "1.0",
+	"B": "2.0",
+	"C": "3.0",
+	"D": "4.0",
+	"E": "5.0"
 	}
-	
+
 	required_rating_name := concat("", ["new_", lower(split(input.conditions[0].condition_name, " ")[1]), "_rating"])
 	required_rating_score := rating_map[split(input.conditions[0].condition_name, " ")[3]]
-	
-	request_url = sprintf("%s/api/measures/component?metricKeys=%s&component=%s", [input.metadata.ssd_secret.sonarQube_creds.url, required_rating_name, input.metadata.sonarqube_projectKey])
-	
+
+	complete_url = concat("",[input.metadata.toolchain_addr,"api/v1/scanResult?fileName=analysis_", input.metadata.owner, "_", input.metadata.repository, "_", input.metadata.build_id, "_sonarqube.json&scanOperation=sonarqubescan"])
+	download_url = concat("",["tool-chain/api/v1/scanResult?fileName=analysis_", input.metadata.owner, "_", input.metadata.repository, "_", input.metadata.build_id, "_sonarqube.json&scanOperation=sonarqubescan"] )
+
 	request = {
-		"method": "GET",
-		"url": request_url,
-		"headers": {
-			"Authorization": sprintf("Bearer %v", [input.metadata.ssd_secret.sonarQube_creds.token]),
-		},
-	}
-	default response = ""
-	response = http.send(request)
-	
-	deny[{"alertMsg": msg, "suggestion": sugg, "error": error}]{
-	  input.metadata.sonarqube_projectKey == ""
-	  msg := ""
-	  error := "Project name not provided."
-	  sugg := "Verify the integration of Sonarqube in SSD is configured properly."
-	}
-	
-	deny[{"alertMsg": msg, "suggestion": sugg, "error": error}]{
-	  response == ""
-	  msg := ""
-	  error := "Response not received."
-	  sugg := "Kindly verify the endpoint provided and the reachability of the endpoint."
-	}
-	
-	deny[{"alertMsg": msg, "suggestion": sugg, "error": error}]{
-	  response.status_code == 500
-	  msg := ""
-	  error := "Sonarqube host provided is not reponding or is not reachable." 
-	  sugg := "Kindly verify the configuration of sonarqube endpoint and reachability of the endpoint."
-	}
-	
-	deny[{"alertMsg": msg, "suggestion": sugg, "error": error}]{
-		response.status_code == 404
-		not contains(error_message, "Component key")
-		msg := ""
-		error := sprintf("%s %v", [response.status, response.body.errors[_].msg])
-		sugg := sprintf("Please add the Reliability metrics keys for the project %s.", [input.metadata.sonarqube_projectKey])
+			"method": "GET",
+			"url": complete_url
 	}
 
+	response = http.send(request)
+	score = [response.body.measures[i].period.value | response.body.measures[i].metric == "new_reliability_rating"][0]
+
 	deny[{"alertMsg": msg, "suggestion": sugg, "error": error}]{
-	  response.status_code == 404
-	  msg := ""
-	  error := sprintf("Error: 404 Not Found. Project not configured for repository %s.", [input.metadata.sonarqube_projectKey])
-	  sugg := sprintf("Please configure project %s in SonarQube.", [input.metadata.sonarqube_projectKey])
+	score == ""
+	msg := sprintf("Required Metric %v for sonarqube project could not be obtained.", [required_rating_name])
+	sugg := "Kindly verify if the token provided has permissions to read the quality metrics. Also, verify if the required quality metrics are available for the project."
+	error := sprintf("Required Metric %v for sonarqube project could not be obtained.", [required_rating_name])
 	}
-	
-	deny[{"alertMsg": msg, "suggestion": sugg, "error": error}]{
-	  response.status_code == 403
-	  error := sprintf("Error: 403 Forbidden. Provided Token does not have privileges to read status of project %s.", [input.metadata.sonarqube_projectKey])
-	  msg := ""
-	  sugg := sprintf("Kindly verify the access token provided is correct and have required privileges to read status of project %s.", [input.metadata.sonarqube_projectKey])
-	}
-	
-	deny[{"alertMsg": msg, "suggestion": sugg, "error": error}]{
-	  not response.status_code in [500, 404, 403, 200, 302]
-	  error := sprintf("Error: %v: %v", [response.status_code])
-	  msg := ""
-	  sugg := sprintf("Kindly rectify the error while fetching %s project status.", [input.metadata.sonarqube_projectKey])
-	}
-	
-	deny[{"alertMsg": msg, "suggestion": sugg, "error": error}]{
-	  response.status_code in [200, 302]
-	  score = response.body.component.measures[0].period.value
-	  score == required_rating_score
-	  msg := sprintf("The SonarQube metric %s stands at %s for project %s, falling short of the expected value.", [required_rating_name, score, input.metadata.sonarqube_projectKey])
-	  sugg := sprintf("Adhere to code security standards to improve score for project %s.", [input.metadata.sonarqube_projectKey])
-	  error := ""
+
+	deny[{"alertMsg": msg, "suggestion": sugg, "error": error, "fileApi": download_url}]{
+	score == required_rating_score
+	msg := sprintf("The SonarQube metric %s stands at %s for project %s, falling short of the expected value.", [required_rating_name, score, input.metadata.sonarqube_projectKey])
+	sugg := sprintf("Adhere to code security standards to improve score for project %s.", [input.metadata.sonarqube_projectKey])
+	error := ""
 	}`,
 
 	46: `
@@ -3891,861 +3756,413 @@ var scriptMap = map[int]string{
 
 	66: `
 	package opsmx
-	import future.keywords.in
-	
-	request_url_p1 = concat("/",[input.metadata.ssd_secret.sonarQube_creds.url,"api/qualitygates/project_status?projectKey"])
-	request_url = concat("=", [request_url_p1, input.metadata.sonarqube_projectKey])
-	
-	
+
+	default quality_gate_status = ""
+
+	complete_url = concat("",[input.metadata.toolchain_addr,"api/v1/scanResult?fileName=analysis_", input.metadata.owner, "_", input.metadata.repository, "_", input.metadata.build_id, "_sonarqube.json&scanOperation=sonarqubescan"])
+	download_url = concat("",["tool-chain/api/v1/scanResult?fileName=analysis_", input.metadata.owner, "_", input.metadata.repository, "_", input.metadata.build_id, "_sonarqube.json&scanOperation=sonarqubescan"] )
+
+
 	request = {
-		"method": "GET",
-		"url": request_url,
-		"headers": {
-			"Authorization": sprintf("Bearer %v", [input.metadata.ssd_secret.sonarQube_creds.token]),
-		},
-	}
-	
-	default response = ""
-	response = http.send(request)
-	
-	deny[{"alertMsg": msg, "suggestion": sugg, "error": error}]{
-	  input.metadata.sonarqube_projectKey == ""
-	  msg := ""
-	  error := "Project name not provided."
-	  sugg := "Verify the integration of Sonarqube in SSD is configured properly."
-	}
-	
-	deny[{"alertMsg": msg, "suggestion": sugg, "error": error}]{
-	  response == ""
-	  msg := ""
-	  error := "Response not received."
-	  sugg := "Kindly verify the endpoint provided and the reachability of the endpoint."
-	}
-	
-	deny[{"alertMsg": msg, "suggestion": sugg, "error": error}]{
-	  response.status_code == 500
-	  msg := ""
-	  error := "Sonarqube host provided is not reponding or is not reachable."
-	  sugg := "Kindly verify the configuration of sonarqube endpoint and reachability of the endpoint."
+			"method": "GET",
+			"url": complete_url
 	}
 
+	response = http.send(request)
+
+	quality_gate_status := response.body.quality.projectStatus.status
+
 	deny[{"alertMsg": msg, "suggestion": sugg, "error": error}]{
-	  response.status_code == 404
-	  msg := ""
-	  error := sprintf("Error: 404 Not Found. Project not configured for repository %s.", [input.metadata.sonarqube_projectKey])
-	  sugg := sprintf("Please configure project %s in SonarQube.", [input.metadata.sonarqube_projectKey])
+	quality_gate_status == ""
+	msg = "Quality Gate Status for Sonarqube Project could not be accessed."
+	sugg = "Kindly check if the Sonarqube token is configured and has permissions to read issues of the project. Also, verify if the quality gates for project are correctly configured."
+	error = "Failed while fetching quality gate status from Sonarqube."
 	}
-	
-	deny[{"alertMsg": msg, "suggestion": sugg, "error": error}]{
-	  response.status_code == 403
-	  error := sprintf("Error: 403 Forbidden. Provided Token does not have privileges to read status of project %s.", [input.metadata.sonarqube_projectKey])
-	  msg := ""
-	  sugg := sprintf("Kindly verify the access token provided is correct and have required privileges to read status of project %s.", [input.metadata.sonarqube_projectKey])
-	}
-	
-	deny[{"alertMsg": msg, "suggestion": sugg, "error": error}]{
-	  not response.status_code in [500, 404, 403, 200, 302]
-	  error := sprintf("Error: %v: %v", [response.status_code])
-	  msg := ""
-	  sugg := sprintf("Kindly rectify the error while fetching %s project status.", [input.metadata.sonarqube_projectKey])
-	}
-	
-	deny[{"alertMsg": msg, "suggestion": sugg, "error": error}]{
-	  response.body.projectStatus.status == "ERROR"
-	  msg := sprintf("SonarQube Quality Gate Status Check has failed for project %s. Prioritize and address the identified issues promptly to meet the defined quality standards and ensure software reliability.", [input.metadata.sonarqube_projectKey])
-	  error := ""
-	  sugg := "Prioritize and address the identified issues promptly to meet the defined quality standards and ensure software reliability."
+
+	deny[{"alertMsg": msg, "suggestion": sugg, "error": error, "fileApi": download_url}]{
+	quality_gate_status != ""
+	quality_gate_status != "OK"
+	msg = sprintf("Quality Gate Status for Sonarqube Project is %v.", [quality_gate_status])
+	sugg = "Kindly refer to the list of issues reported in SAST scan and their resolutions."
+	error = ""
 	}`,
 
 	67: `
 	package opsmx
-
 	import future.keywords.in
-	
+
+	default score = ""
+
 	rating_map := {
-	  "A": "5.0",
-	  "B": "4.0",
-	  "C": "3.0",
-	  "D": "2.0",
-	  "E": "1.0"
+	"A": "1.0",
+	"B": "2.0",
+	"C": "3.0",
+	"D": "4.0",
+	"E": "5.0"
 	}
-	
+
 	required_rating_name := concat("", ["new_", lower(split(input.conditions[0].condition_name, " ")[1]), "_rating"])
 	required_rating_score := rating_map[split(input.conditions[0].condition_name, " ")[3]]
-	
-	request_url = sprintf("%s/api/measures/component?metricKeys=%s&component=%s", [input.metadata.ssd_secret.sonarQube_creds.url, required_rating_name, input.metadata.sonarqube_projectKey])
-	
+
+	complete_url = concat("",[input.metadata.toolchain_addr,"api/v1/scanResult?fileName=analysis_", input.metadata.owner, "_", input.metadata.repository, "_", input.metadata.build_id, "_sonarqube.json&scanOperation=sonarqubescan"])
+	download_url = concat("",["tool-chain/api/v1/scanResult?fileName=analysis_", input.metadata.owner, "_", input.metadata.repository, "_", input.metadata.build_id, "_sonarqube.json&scanOperation=sonarqubescan"] )
+
 	request = {
-		"method": "GET",
-		"url": request_url,
-		"headers": {
-			"Authorization": sprintf("Bearer %v", [input.metadata.ssd_secret.sonarQube_creds.token]),
-		},
+			"method": "GET",
+			"url": complete_url
 	}
-	default response = ""
+
 	response = http.send(request)
-	error_message = response.body.errors[_].msg
-	
+	score = [response.body.measures[i].period.value | response.body.measures[i].metric == "new_maintainability_rating"][0]
+
 	deny[{"alertMsg": msg, "suggestion": sugg, "error": error}]{
-	  input.metadata.sonarqube_projectKey == ""
-	  msg := ""
-	  error := "Project name not provided."
-	  sugg := "Verify the integration of Sonarqube in SSD is configured properly."
+	score == ""
+	msg := sprintf("Required Metric %v for sonarqube project could not be obtained.", [required_rating_name])
+	sugg := "Kindly verify if the token provided has permissions to read the quality metrics. Also, verify if the required quality metrics are available for the project."
+	error := sprintf("Required Metric %v for sonarqube project could not be obtained.", [required_rating_name])
 	}
-	
-	deny[{"alertMsg": msg, "suggestion": sugg, "error": error}]{
-	  response == ""
-	  msg := ""
-	  error := "Response not received."
-	  sugg := "Kindly verify the endpoint provided and the reachability of the endpoint."
-	}
-	
-	deny[{"alertMsg": msg, "suggestion": sugg, "error": error}]{
-	  response.status_code == 500
-	  msg := ""
-	  error := "Sonarqube host provided is not reponding or is not reachable." 
-	  sugg := "Kindly verify the configuration of sonarqube endpoint and reachability of the endpoint."
-	}
-	
-	deny[{"alertMsg": msg, "suggestion": sugg, "error": error}]{
-		response.status_code == 404
-		not contains(error_message, "Component key")
-		msg := ""
-		error := sprintf("%s %v", [response.status, response.body.errors[_].msg])
-		sugg := sprintf("Please add the Maintanability metrics keys for the project %s.", [input.metadata.sonarqube_projectKey])
-	}
-	  
-	deny[{"alertMsg": msg, "suggestion": sugg, "error": error}]{
-		response.status_code == 404
-		contains(error_message, "Component key")
-		msg := ""
-		error := sprintf("Sonar Qube Project is not present %s", [input.metadata.sonarqube_projectKey])
-		sugg := "Project is incorrect, Please provide the appropriate project key"
-	}
-	
-	deny[{"alertMsg": msg, "suggestion": sugg, "error": error}]{
-	  response.status_code == 403
-	  error := sprintf("Error: 403 Forbidden. Provided Token does not have privileges to read status of project %s.", [input.metadata.sonarqube_projectKey])
-	  msg := ""
-	  sugg := sprintf("Kindly verify the access token provided is correct and have required privileges to read status of project %s.", [input.metadata.sonarqube_projectKey])
-	}
-	
-	deny[{"alertMsg": msg, "suggestion": sugg, "error": error}]{
-	  not response.status_code in [500, 404, 403, 200, 302]
-	  error := sprintf("Error: %v: %v", [response.status_code])
-	  msg := ""
-	  sugg := sprintf("Kindly rectify the error while fetching %s project status.", [input.metadata.sonarqube_projectKey])
-	}
-	
-	deny[{"alertMsg": msg, "suggestion": sugg, "error": error}]{
-	  response.status_code in [200, 302]
-	  score = response.body.component.measures[0].period.value
-	  score == required_rating_score
-	  msg := sprintf("The SonarQube metric %s stands at %s for project %s, falling short of the expected value.", [required_rating_name, score, input.metadata.sonarqube_projectKey])
-	  sugg := sprintf("Adhere to code security standards to improve score for project %s.", [input.metadata.sonarqube_projectKey])
-	  error := ""
+
+	deny[{"alertMsg": msg, "suggestion": sugg, "error": error, "fileApi": download_url}]{
+	score == required_rating_score
+	msg := sprintf("The SonarQube metric %s stands at %s for project %s, falling short of the expected value.", [required_rating_name, score, input.metadata.sonarqube_projectKey])
+	sugg := sprintf("Adhere to code security standards to improve score for project %s.", [input.metadata.sonarqube_projectKey])
+	error := ""
 	}`,
 
 	68: `
 	package opsmx
-
 	import future.keywords.in
-	
+
+	default score = ""
+
 	rating_map := {
-	  "A": "5.0",
-	  "B": "4.0",
-	  "C": "3.0",
-	  "D": "2.0",
-	  "E": "1.0"
+	"A": "1.0",
+	"B": "2.0",
+	"C": "3.0",
+	"D": "4.0",
+	"E": "5.0"
 	}
-	
+
 	required_rating_name := concat("", ["new_", lower(split(input.conditions[0].condition_name, " ")[1]), "_rating"])
 	required_rating_score := rating_map[split(input.conditions[0].condition_name, " ")[3]]
-	
-	request_url = sprintf("%s/api/measures/component?metricKeys=%s&component=%s", [input.metadata.ssd_secret.sonarQube_creds.url, required_rating_name, input.metadata.sonarqube_projectKey])
-	
+
+	complete_url = concat("",[input.metadata.toolchain_addr,"api/v1/scanResult?fileName=analysis_", input.metadata.owner, "_", input.metadata.repository, "_", input.metadata.build_id, "_sonarqube.json&scanOperation=sonarqubescan"])
+	download_url = concat("",["tool-chain/api/v1/scanResult?fileName=analysis_", input.metadata.owner, "_", input.metadata.repository, "_", input.metadata.build_id, "_sonarqube.json&scanOperation=sonarqubescan"] )
+
 	request = {
-		"method": "GET",
-		"url": request_url,
-		"headers": {
-			"Authorization": sprintf("Bearer %v", [input.metadata.ssd_secret.sonarQube_creds.token]),
-		},
+			"method": "GET",
+			"url": complete_url
 	}
-	default response = ""
+
 	response = http.send(request)
-	error_message = response.body.errors[_].msg
+	score = [response.body.measures[i].period.value | response.body.measures[i].metric == "new_maintainability_rating"][0]
 
 	deny[{"alertMsg": msg, "suggestion": sugg, "error": error}]{
-	  input.metadata.sonarqube_projectKey == ""
-	  msg := ""
-	  error := "Project name not provided."
-	  sugg := "Verify the integration of Sonarqube in SSD is configured properly."
+	score == ""
+	msg := sprintf("Required Metric %v for sonarqube project could not be obtained.", [required_rating_name])
+	sugg := "Kindly verify if the token provided has permissions to read the quality metrics. Also, verify if the required quality metrics are available for the project."
+	error := sprintf("Required Metric %v for sonarqube project could not be obtained.", [required_rating_name])
 	}
 
-	deny[{"alertMsg": msg, "suggestion": sugg, "error": error}]{
-	  response == ""
-	  msg := ""
-	  error := "Response not received."
-	  sugg := "Kindly verify the endpoint provided and the reachability of the endpoint."
-	}
-
-	deny[{"alertMsg": msg, "suggestion": sugg, "error": error}]{
-	  response.status_code == 500
-	  msg := ""
-	  error := "Sonarqube host provided is not reponding or is not reachable." 
-	  sugg := "Kindly verify the configuration of sonarqube endpoint and reachability of the endpoint."
-	}
-
-	deny[{"alertMsg": msg, "suggestion": sugg, "error": error}]{
-		response.status_code == 403
-		error := sprintf("Error: 403 Forbidden. Provided Token does not have privileges to read status of project %s.", [input.metadata.sonarqube_projectKey])
-		msg := ""
-		sugg := sprintf("Kindly verify the access token provided is correct and have required privileges to read status of project %s.", [input.metadata.sonarqube_projectKey])
-	}
-
-	deny[{"alertMsg": msg, "suggestion": sugg, "error": error}]{
-		response.status_code == 404
-		not contains(error_message, "Component key")
-		msg := ""
-		error := sprintf("%s %v", [response.status, response.body.errors[_].msg])
-		sugg := sprintf("Please add the Maintanability metrics keys for the project %s.", [input.metadata.sonarqube_projectKey])
-	}
-
-	deny[{"alertMsg": msg, "suggestion": sugg, "error": error}]{
-		response.status_code == 404
-		contains(error_message, "Component key")
-		msg := ""
-		error := sprintf("Sonar Qube Project is not present %s", [input.metadata.sonarqube_projectKey])
-		sugg := "Project is incorrect, Please provide the appropriate project key"
-	}
-
-	deny[{"alertMsg": msg, "suggestion": sugg, "error": error}]{
-		not response.status_code in [500, 404, 403, 200, 302]
-		error := sprintf("Error: %v: %v", [response.status_code])
-		msg := ""
-		sugg := sprintf("Kindly rectify the error while fetching %s project status.", [input.metadata.sonarqube_projectKey])
-	}
-
-	deny[{"alertMsg": msg, "suggestion": sugg, "error": error}]{
-		response.status_code in [200, 302]
-		score = response.body.component.measures[0].period.value
-		score == required_rating_score
-		msg := sprintf("The SonarQube metric %s stands at %s for project %s, falling short of the expected value.", [required_rating_name, score, input.metadata.sonarqube_projectKey])
-		sugg := sprintf("Adhere to code security standards to improve score for project %s.", [input.metadata.sonarqube_projectKey])
-		error := ""
+	deny[{"alertMsg": msg, "suggestion": sugg, "error": error, "fileApi": download_url}]{
+	score == required_rating_score
+	msg := sprintf("The SonarQube metric %s stands at %s for project %s, falling short of the expected value.", [required_rating_name, score, input.metadata.sonarqube_projectKey])
+	sugg := sprintf("Adhere to code security standards to improve score for project %s.", [input.metadata.sonarqube_projectKey])
+	error := ""
 	}`,
 
 	69: `
 	package opsmx
-
 	import future.keywords.in
-	
+
+	default score = ""
+
 	rating_map := {
-	  "A": "5.0",
-	  "B": "4.0",
-	  "C": "3.0",
-	  "D": "2.0",
-	  "E": "1.0"
+	"A": "1.0",
+	"B": "2.0",
+	"C": "3.0",
+	"D": "4.0",
+	"E": "5.0"
 	}
-	
+
 	required_rating_name := concat("", ["new_", lower(split(input.conditions[0].condition_name, " ")[1]), "_rating"])
 	required_rating_score := rating_map[split(input.conditions[0].condition_name, " ")[3]]
-	
-	request_url = sprintf("%s/api/measures/component?metricKeys=%s&component=%s", [input.metadata.ssd_secret.sonarQube_creds.url, required_rating_name, input.metadata.sonarqube_projectKey])
-	
+
+	complete_url = concat("",[input.metadata.toolchain_addr,"api/v1/scanResult?fileName=analysis_", input.metadata.owner, "_", input.metadata.repository, "_", input.metadata.build_id, "_sonarqube.json&scanOperation=sonarqubescan"])
+	download_url = concat("",["tool-chain/api/v1/scanResult?fileName=analysis_", input.metadata.owner, "_", input.metadata.repository, "_", input.metadata.build_id, "_sonarqube.json&scanOperation=sonarqubescan"] )
+
 	request = {
-		"method": "GET",
-		"url": request_url,
-		"headers": {
-			"Authorization": sprintf("Bearer %v", [input.metadata.ssd_secret.sonarQube_creds.token]),
-		},
+			"method": "GET",
+			"url": complete_url
 	}
-	default response = ""
+
 	response = http.send(request)
-	error_message = response.body.errors[_].msg
-	
+	score = [response.body.measures[i].period.value | response.body.measures[i].metric == "new_maintainability_rating"][0]
+
 	deny[{"alertMsg": msg, "suggestion": sugg, "error": error}]{
-	  input.metadata.sonarqube_projectKey == ""
-	  msg := ""
-	  error := "Project name not provided."
-	  sugg := "Verify the integration of Sonarqube in SSD is configured properly."
+	score == ""
+	msg := sprintf("Required Metric %v for sonarqube project could not be obtained.", [required_rating_name])
+	sugg := "Kindly verify if the token provided has permissions to read the quality metrics. Also, verify if the required quality metrics are available for the project."
+	error := sprintf("Required Metric %v for sonarqube project could not be obtained.", [required_rating_name])
 	}
-	
-	deny[{"alertMsg": msg, "suggestion": sugg, "error": error}]{
-	  response == ""
-	  msg := ""
-	  error := "Response not received."
-	  sugg := "Kindly verify the endpoint provided and the reachability of the endpoint."
-	}
-	
-	deny[{"alertMsg": msg, "suggestion": sugg, "error": error}]{
-	  response.status_code == 500
-	  msg := ""
-	  error := "Sonarqube host provided is not reponding or is not reachable." 
-	  sugg := "Kindly verify the configuration of sonarqube endpoint and reachability of the endpoint."
-	}
-	
-	deny[{"alertMsg": msg, "suggestion": sugg, "error": error}]{
-	  response.status_code == 404
-	  not contains(error_message, "Component key")
-	  msg := ""
-	  error := sprintf("%s %v", [response.status, response.body.errors[_].msg])
-	  sugg := sprintf("Please add the Maintanability metrics keys for the project %s.", [input.metadata.sonarqube_projectKey])
-	}
-	  
-	deny[{"alertMsg": msg, "suggestion": sugg, "error": error}]{
-	  response.status_code == 404
-	  contains(error_message, "Component key")
-	  msg := ""
-	  error := sprintf("Sonar Qube Project is not present %s", [input.metadata.sonarqube_projectKey])
-	  sugg := "Project is incorrect, Please provide the appropriate project key"
-	}
-	
-	deny[{"alertMsg": msg, "suggestion": sugg, "error": error}]{
-	  response.status_code == 403
-	  error := sprintf("Error: 403 Forbidden. Provided Token does not have privileges to read status of project %s.", [input.metadata.sonarqube_projectKey])
-	  msg := ""
-	  sugg := sprintf("Kindly verify the access token provided is correct and have required privileges to read status of project %s.", [input.metadata.sonarqube_projectKey])
-	}
-	
-	deny[{"alertMsg": msg, "suggestion": sugg, "error": error}]{
-	  not response.status_code in [500, 404, 403, 200, 302]
-	  error := sprintf("Error: %v: %v", [response.status_code])
-	  msg := ""
-	  sugg := sprintf("Kindly rectify the error while fetching %s project status.", [input.metadata.sonarqube_projectKey])
-	}
-	
-	deny[{"alertMsg": msg, "suggestion": sugg, "error": error}]{
-	  response.status_code in [200, 302]
-	  score = response.body.component.measures[0].period.value
-	  score == required_rating_score
-	  msg := sprintf("The SonarQube metric %s stands at %s for project %s, falling short of the expected value.", [required_rating_name, score, input.metadata.sonarqube_projectKey])
-	  sugg := sprintf("Adhere to code security standards to improve score for project %s.", [input.metadata.sonarqube_projectKey])
-	  error := ""
+
+	deny[{"alertMsg": msg, "suggestion": sugg, "error": error, "fileApi": download_url}]{
+	score == required_rating_score
+	msg := sprintf("The SonarQube metric %s stands at %s for project %s, falling short of the expected value.", [required_rating_name, score, input.metadata.sonarqube_projectKey])
+	sugg := sprintf("Adhere to code security standards to improve score for project %s.", [input.metadata.sonarqube_projectKey])
+	error := ""
 	}`,
 
 	70: `
 	package opsmx
-
 	import future.keywords.in
-	
+
+	default score = ""
+
 	rating_map := {
-	  "A": "5.0",
-	  "B": "4.0",
-	  "C": "3.0",
-	  "D": "2.0",
-	  "E": "1.0"
+	"A": "1.0",
+	"B": "2.0",
+	"C": "3.0",
+	"D": "4.0",
+	"E": "5.0"
 	}
-	
+
 	required_rating_name := concat("", ["new_", lower(split(input.conditions[0].condition_name, " ")[1]), "_rating"])
 	required_rating_score := rating_map[split(input.conditions[0].condition_name, " ")[3]]
-	
-	request_url = sprintf("%s/api/measures/component?metricKeys=%s&component=%s", [input.metadata.ssd_secret.sonarQube_creds.url, required_rating_name, input.metadata.sonarqube_projectKey])
-	
+
+	complete_url = concat("",[input.metadata.toolchain_addr,"api/v1/scanResult?fileName=analysis_", input.metadata.owner, "_", input.metadata.repository, "_", input.metadata.build_id, "_sonarqube.json&scanOperation=sonarqubescan"])
+	download_url = concat("",["tool-chain/api/v1/scanResult?fileName=analysis_", input.metadata.owner, "_", input.metadata.repository, "_", input.metadata.build_id, "_sonarqube.json&scanOperation=sonarqubescan"] )
+
 	request = {
-		"method": "GET",
-		"url": request_url,
-		"headers": {
-			"Authorization": sprintf("Bearer %v", [input.metadata.ssd_secret.sonarQube_creds.token]),
-		},
+			"method": "GET",
+			"url": complete_url
 	}
-	default response = ""
+
 	response = http.send(request)
-	error_message = response.body.errors[_].msg
-	
+	score = [response.body.measures[i].period.value | response.body.measures[i].metric == "new_maintainability_rating"][0]
+
 	deny[{"alertMsg": msg, "suggestion": sugg, "error": error}]{
-	  input.metadata.sonarqube_projectKey == ""
-	  msg := ""
-	  error := "Project name not provided."
-	  sugg := "Verify the integration of Sonarqube in SSD is configured properly."
+	score == ""
+	msg := sprintf("Required Metric %v for sonarqube project could not be obtained.", [required_rating_name])
+	sugg := "Kindly verify if the token provided has permissions to read the quality metrics. Also, verify if the required quality metrics are available for the project."
+	error := sprintf("Required Metric %v for sonarqube project could not be obtained.", [required_rating_name])
 	}
-	
-	deny[{"alertMsg": msg, "suggestion": sugg, "error": error}]{
-	  response == ""
-	  msg := ""
-	  error := "Response not received."
-	  sugg := "Kindly verify the endpoint provided and the reachability of the endpoint."
-	}
-	
-	deny[{"alertMsg": msg, "suggestion": sugg, "error": error}]{
-	  response.status_code == 500
-	  msg := ""
-	  error := "Sonarqube host provided is not reponding or is not reachable." 
-	  sugg := "Kindly verify the configuration of sonarqube endpoint and reachability of the endpoint."
-	}
-	
-	deny[{"alertMsg": msg, "suggestion": sugg, "error": error}]{
-		response.status_code == 404
-		not contains(error_message, "Component key")
-		msg := ""
-		error := sprintf("%s %v", [response.status, response.body.errors[_].msg])
-		sugg := sprintf("Please add the Maintanability metrics keys for the project %s.", [input.metadata.sonarqube_projectKey])
-	}
-	  
-	deny[{"alertMsg": msg, "suggestion": sugg, "error": error}]{
-		response.status_code == 404
-		contains(error_message, "Component key")
-		msg := ""
-		error := sprintf("Sonar Qube Project is not present %s", [input.metadata.sonarqube_projectKey])
-		sugg := "Project is incorrect, Please provide the appropriate project key"
-	}
-	
-	deny[{"alertMsg": msg, "suggestion": sugg, "error": error}]{
-	  response.status_code == 403
-	  error := sprintf("Error: 403 Forbidden. Provided Token does not have privileges to read status of project %s.", [input.metadata.sonarqube_projectKey])
-	  msg := ""
-	  sugg := sprintf("Kindly verify the access token provided is correct and have required privileges to read status of project %s.", [input.metadata.sonarqube_projectKey])
-	}
-	
-	deny[{"alertMsg": msg, "suggestion": sugg, "error": error}]{
-	  not response.status_code in [500, 404, 403, 200, 302]
-	  error := sprintf("Error: %v: %v", [response.status_code])
-	  msg := ""
-	  sugg := sprintf("Kindly rectify the error while fetching %s project status.", [input.metadata.sonarqube_projectKey])
-	}
-	
-	deny[{"alertMsg": msg, "suggestion": sugg, "error": error}]{
-	  response.status_code in [200, 302]
-	  score = response.body.component.measures[0].period.value
-	  score == required_rating_score
-	  msg := sprintf("The SonarQube metric %s stands at %s for project %s, falling short of the expected value.", [required_rating_name, score, input.metadata.sonarqube_projectKey])
-	  sugg := sprintf("Adhere to code security standards to improve score for project %s.", [input.metadata.sonarqube_projectKey])
-	  error := ""
+
+	deny[{"alertMsg": msg, "suggestion": sugg, "error": error, "fileApi": download_url}]{
+	score == required_rating_score
+	msg := sprintf("The SonarQube metric %s stands at %s for project %s, falling short of the expected value.", [required_rating_name, score, input.metadata.sonarqube_projectKey])
+	sugg := sprintf("Adhere to code security standards to improve score for project %s.", [input.metadata.sonarqube_projectKey])
+	error := ""
 	}`,
 
 	71: `
 	package opsmx
-
 	import future.keywords.in
-	
+
+	default score = ""
+
 	rating_map := {
-	  "A": "5.0",
-	  "B": "4.0",
-	  "C": "3.0",
-	  "D": "2.0",
-	  "E": "1.0"
+	"A": "1.0",
+	"B": "2.0",
+	"C": "3.0",
+	"D": "4.0",
+	"E": "5.0"
 	}
-	
+
 	required_rating_name := concat("", ["new_", lower(split(input.conditions[0].condition_name, " ")[1]), "_rating"])
 	required_rating_score := rating_map[split(input.conditions[0].condition_name, " ")[3]]
-	
-	request_url = sprintf("%s/api/measures/component?metricKeys=%s&component=%s", [input.metadata.ssd_secret.sonarQube_creds.url, required_rating_name, input.metadata.sonarqube_projectKey])
-	
+
+	complete_url = concat("",[input.metadata.toolchain_addr,"api/v1/scanResult?fileName=analysis_", input.metadata.owner, "_", input.metadata.repository, "_", input.metadata.build_id, "_sonarqube.json&scanOperation=sonarqubescan"])
+	download_url = concat("",["tool-chain/api/v1/scanResult?fileName=analysis_", input.metadata.owner, "_", input.metadata.repository, "_", input.metadata.build_id, "_sonarqube.json&scanOperation=sonarqubescan"] )
+
 	request = {
-		"method": "GET",
-		"url": request_url,
-		"headers": {
-			"Authorization": sprintf("Bearer %v", [input.metadata.ssd_secret.sonarQube_creds.token]),
-		},
-	}
-	default response = ""
-	response = http.send(request)
-	
-	deny[{"alertMsg": msg, "suggestion": sugg, "error": error}]{
-	  input.metadata.sonarqube_projectKey == ""
-	  msg := ""
-	  error := "Project name not provided."
-	  sugg := "Verify the integration of Sonarqube in SSD is configured properly."
-	}
-	
-	deny[{"alertMsg": msg, "suggestion": sugg, "error": error}]{
-	  response == ""
-	  msg := ""
-	  error := "Response not received."
-	  sugg := "Kindly verify the endpoint provided and the reachability of the endpoint."
-	}
-	
-	deny[{"alertMsg": msg, "suggestion": sugg, "error": error}]{
-	  response.status_code == 500
-	  msg := ""
-	  error := "Sonarqube host provided is not reponding or is not reachable." 
-	  sugg := "Kindly verify the configuration of sonarqube endpoint and reachability of the endpoint."
-	}
-	
-	deny[{"alertMsg": msg, "suggestion": sugg, "error": error}]{
-		response.status_code == 404
-		not contains(error_message, "Component key")
-		msg := ""
-		error := sprintf("%s %v", [response.status, response.body.errors[_].msg])
-		sugg := sprintf("Please add the Security metrics keys for the project %s.", [input.metadata.sonarqube_projectKey])
+			"method": "GET",
+			"url": complete_url
 	}
 
+	response = http.send(request)
+	score = [response.body.measures[i].period.value | response.body.measures[i].metric == "new_security_rating"][0]
+
 	deny[{"alertMsg": msg, "suggestion": sugg, "error": error}]{
-	  response.status_code == 404
-	  msg := ""
-	  error := sprintf("Error: 404 Not Found. Project not configured for repository %s.", [input.metadata.sonarqube_projectKey])
-	  sugg := sprintf("Please configure project %s in SonarQube.", [input.metadata.sonarqube_projectKey])
+	score == ""
+	msg := sprintf("Required Metric %v for sonarqube project could not be obtained.", [required_rating_name])
+	sugg := "Kindly verify if the token provided has permissions to read the quality metrics. Also, verify if the required quality metrics are available for the project."
+	error := sprintf("Required Metric %v for sonarqube project could not be obtained.", [required_rating_name])
 	}
-	
-	deny[{"alertMsg": msg, "suggestion": sugg, "error": error}]{
-	  response.status_code == 403
-	  error := sprintf("Error: 403 Forbidden. Provided Token does not have privileges to read status of project %s.", [input.metadata.sonarqube_projectKey])
-	  msg := ""
-	  sugg := sprintf("Kindly verify the access token provided is correct and have required privileges to read status of project %s.", [input.metadata.sonarqube_projectKey])
-	}
-	
-	deny[{"alertMsg": msg, "suggestion": sugg, "error": error}]{
-	  not response.status_code in [500, 404, 403, 200, 302]
-	  error := sprintf("Error: %v: %v", [response.status_code])
-	  msg := ""
-	  sugg := sprintf("Kindly rectify the error while fetching %s project status.", [input.metadata.sonarqube_projectKey])
-	}
-	
-	deny[{"alertMsg": msg, "suggestion": sugg, "error": error}]{
-	  response.status_code in [200, 302]
-	  score = response.body.component.measures[0].period.value
-	  score == required_rating_score
-	  msg := sprintf("The SonarQube metric %s stands at %s for project %s, falling short of the expected value.", [required_rating_name, score, input.metadata.sonarqube_projectKey])
-	  sugg := sprintf("Adhere to code security standards to improve score for project %s.", [input.metadata.sonarqube_projectKey])
-	  error := ""
+
+	deny[{"alertMsg": msg, "suggestion": sugg, "error": error, "fileApi": download_url}]{
+	score == required_rating_score
+	msg := sprintf("The SonarQube metric %s stands at %s for project %s, falling short of the expected value.", [required_rating_name, score, input.metadata.sonarqube_projectKey])
+	sugg := sprintf("Adhere to code security standards to improve score for project %s.", [input.metadata.sonarqube_projectKey])
+	error := ""
 	}`,
 
 	72: `
 	package opsmx
-
 	import future.keywords.in
-	
+
+	default score = ""
+
 	rating_map := {
-	  "A": "5.0",
-	  "B": "4.0",
-	  "C": "3.0",
-	  "D": "2.0",
-	  "E": "1.0"
+	"A": "1.0",
+	"B": "2.0",
+	"C": "3.0",
+	"D": "4.0",
+	"E": "5.0"
 	}
-	
+
 	required_rating_name := concat("", ["new_", lower(split(input.conditions[0].condition_name, " ")[1]), "_rating"])
 	required_rating_score := rating_map[split(input.conditions[0].condition_name, " ")[3]]
-	
-	request_url = sprintf("%s/api/measures/component?metricKeys=%s&component=%s", [input.metadata.ssd_secret.sonarQube_creds.url, required_rating_name, input.metadata.sonarqube_projectKey])
-	
+
+	complete_url = concat("",[input.metadata.toolchain_addr,"api/v1/scanResult?fileName=analysis_", input.metadata.owner, "_", input.metadata.repository, "_", input.metadata.build_id, "_sonarqube.json&scanOperation=sonarqubescan"])
+	download_url = concat("",["tool-chain/api/v1/scanResult?fileName=analysis_", input.metadata.owner, "_", input.metadata.repository, "_", input.metadata.build_id, "_sonarqube.json&scanOperation=sonarqubescan"] )
+
 	request = {
-		"method": "GET",
-		"url": request_url,
-		"headers": {
-			"Authorization": sprintf("Bearer %v", [input.metadata.ssd_secret.sonarQube_creds.token]),
-		},
-	}
-	default response = ""
-	response = http.send(request)
-	
-	deny[{"alertMsg": msg, "suggestion": sugg, "error": error}]{
-	  input.metadata.sonarqube_projectKey == ""
-	  msg := ""
-	  error := "Project name not provided."
-	  sugg := "Verify the integration of Sonarqube in SSD is configured properly."
-	}
-	
-	deny[{"alertMsg": msg, "suggestion": sugg, "error": error}]{
-	  response == ""
-	  msg := ""
-	  error := "Response not received."
-	  sugg := "Kindly verify the endpoint provided and the reachability of the endpoint."
-	}
-	
-	deny[{"alertMsg": msg, "suggestion": sugg, "error": error}]{
-	  response.status_code == 500
-	  msg := ""
-	  error := "Sonarqube host provided is not reponding or is not reachable." 
-	  sugg := "Kindly verify the configuration of sonarqube endpoint and reachability of the endpoint."
-	}
-	
-	deny[{"alertMsg": msg, "suggestion": sugg, "error": error}]{
-		response.status_code == 404
-		not contains(error_message, "Component key")
-		msg := ""
-		error := sprintf("%s %v", [response.status, response.body.errors[_].msg])
-		sugg := sprintf("Please add the Security metrics keys for the project %s.", [input.metadata.sonarqube_projectKey])
+			"method": "GET",
+			"url": complete_url
 	}
 
+	response = http.send(request)
+	score = [response.body.measures[i].period.value | response.body.measures[i].metric == "new_security_rating"][0]
+
 	deny[{"alertMsg": msg, "suggestion": sugg, "error": error}]{
-	  response.status_code == 404
-	  msg := ""
-	  error := sprintf("Error: 404 Not Found. Project not configured for repository %s.", [input.metadata.sonarqube_projectKey])
-	  sugg := sprintf("Please configure project %s in SonarQube.", [input.metadata.sonarqube_projectKey])
+	score == ""
+	msg := sprintf("Required Metric %v for sonarqube project could not be obtained.", [required_rating_name])
+	sugg := "Kindly verify if the token provided has permissions to read the quality metrics. Also, verify if the required quality metrics are available for the project."
+	error := sprintf("Required Metric %v for sonarqube project could not be obtained.", [required_rating_name])
 	}
-	
-	deny[{"alertMsg": msg, "suggestion": sugg, "error": error}]{
-	  response.status_code == 403
-	  error := sprintf("Error: 403 Forbidden. Provided Token does not have privileges to read status of project %s.", [input.metadata.sonarqube_projectKey])
-	  msg := ""
-	  sugg := sprintf("Kindly verify the access token provided is correct and have required privileges to read status of project %s.", [input.metadata.sonarqube_projectKey])
-	}
-	
-	deny[{"alertMsg": msg, "suggestion": sugg, "error": error}]{
-	  not response.status_code in [500, 404, 403, 200, 302]
-	  error := sprintf("Error: %v: %v", [response.status_code])
-	  msg := ""
-	  sugg := sprintf("Kindly rectify the error while fetching %s project status.", [input.metadata.sonarqube_projectKey])
-	}
-	
-	deny[{"alertMsg": msg, "suggestion": sugg, "error": error}]{
-	  response.status_code in [200, 302]
-	  score = response.body.component.measures[0].period.value
-	  score == required_rating_score
-	  msg := sprintf("The SonarQube metric %s stands at %s for project %s, falling short of the expected value.", [required_rating_name, score, input.metadata.sonarqube_projectKey])
-	  sugg := sprintf("Adhere to code security standards to improve score for project %s.", [input.metadata.sonarqube_projectKey])
-	  error := ""
+
+	deny[{"alertMsg": msg, "suggestion": sugg, "error": error, "fileApi": download_url}]{
+	score == required_rating_score
+	msg := sprintf("The SonarQube metric %s stands at %s for project %s, falling short of the expected value.", [required_rating_name, score, input.metadata.sonarqube_projectKey])
+	sugg := sprintf("Adhere to code security standards to improve score for project %s.", [input.metadata.sonarqube_projectKey])
+	error := ""
 	}`,
 
 	73: `
 	package opsmx
-
 	import future.keywords.in
-	
+
+	default score = ""
+
 	rating_map := {
-	  "A": "5.0",
-	  "B": "4.0",
-	  "C": "3.0",
-	  "D": "2.0",
-	  "E": "1.0"
+	"A": "1.0",
+	"B": "2.0",
+	"C": "3.0",
+	"D": "4.0",
+	"E": "5.0"
 	}
-	
+
 	required_rating_name := concat("", ["new_", lower(split(input.conditions[0].condition_name, " ")[1]), "_rating"])
 	required_rating_score := rating_map[split(input.conditions[0].condition_name, " ")[3]]
-	
-	request_url = sprintf("%s/api/measures/component?metricKeys=%s&component=%s", [input.metadata.ssd_secret.sonarQube_creds.url, required_rating_name, input.metadata.sonarqube_projectKey])
-	
+
+	complete_url = concat("",[input.metadata.toolchain_addr,"api/v1/scanResult?fileName=analysis_", input.metadata.owner, "_", input.metadata.repository, "_", input.metadata.build_id, "_sonarqube.json&scanOperation=sonarqubescan"])
+	download_url = concat("",["tool-chain/api/v1/scanResult?fileName=analysis_", input.metadata.owner, "_", input.metadata.repository, "_", input.metadata.build_id, "_sonarqube.json&scanOperation=sonarqubescan"] )
+
 	request = {
-		"method": "GET",
-		"url": request_url,
-		"headers": {
-			"Authorization": sprintf("Bearer %v", [input.metadata.ssd_secret.sonarQube_creds.token]),
-		},
-	}
-	default response = ""
-	response = http.send(request)
-	
-	deny[{"alertMsg": msg, "suggestion": sugg, "error": error}]{
-	  input.metadata.sonarqube_projectKey == ""
-	  msg := ""
-	  error := "Project name not provided."
-	  sugg := "Verify the integration of Sonarqube in SSD is configured properly."
-	}
-	
-	deny[{"alertMsg": msg, "suggestion": sugg, "error": error}]{
-	  response == ""
-	  msg := ""
-	  error := "Response not received."
-	  sugg := "Kindly verify the endpoint provided and the reachability of the endpoint."
-	}
-	
-	deny[{"alertMsg": msg, "suggestion": sugg, "error": error}]{
-	  response.status_code == 500
-	  msg := ""
-	  error := "Sonarqube host provided is not reponding or is not reachable." 
-	  sugg := "Kindly verify the configuration of sonarqube endpoint and reachability of the endpoint."
-	}
-	
-	deny[{"alertMsg": msg, "suggestion": sugg, "error": error}]{
-		response.status_code == 404
-		not contains(error_message, "Component key")
-		msg := ""
-		error := sprintf("%s %v", [response.status, response.body.errors[_].msg])
-		sugg := sprintf("Please add the Security metrics keys for the project %s.", [input.metadata.sonarqube_projectKey])
+			"method": "GET",
+			"url": complete_url
 	}
 
+	response = http.send(request)
+	score = [response.body.measures[i].period.value | response.body.measures[i].metric == "new_security_rating"][0]
+
 	deny[{"alertMsg": msg, "suggestion": sugg, "error": error}]{
-	  response.status_code == 404
-	  msg := ""
-	  error := sprintf("Error: 404 Not Found. Project not configured for repository %s.", [input.metadata.sonarqube_projectKey])
-	  sugg := sprintf("Please configure project %s in SonarQube.", [input.metadata.sonarqube_projectKey])
+	score == ""
+	msg := sprintf("Required Metric %v for sonarqube project could not be obtained.", [required_rating_name])
+	sugg := "Kindly verify if the token provided has permissions to read the quality metrics. Also, verify if the required quality metrics are available for the project."
+	error := sprintf("Required Metric %v for sonarqube project could not be obtained.", [required_rating_name])
 	}
-	
-	deny[{"alertMsg": msg, "suggestion": sugg, "error": error}]{
-	  response.status_code == 403
-	  error := sprintf("Error: 403 Forbidden. Provided Token does not have privileges to read status of project %s.", [input.metadata.sonarqube_projectKey])
-	  msg := ""
-	  sugg := sprintf("Kindly verify the access token provided is correct and have required privileges to read status of project %s.", [input.metadata.sonarqube_projectKey])
-	}
-	
-	deny[{"alertMsg": msg, "suggestion": sugg, "error": error}]{
-	  not response.status_code in [500, 404, 403, 200, 302]
-	  error := sprintf("Error: %v: %v", [response.status_code])
-	  msg := ""
-	  sugg := sprintf("Kindly rectify the error while fetching %s project status.", [input.metadata.sonarqube_projectKey])
-	}
-	
-	deny[{"alertMsg": msg, "suggestion": sugg, "error": error}]{
-	  response.status_code in [200, 302]
-	  score = response.body.component.measures[0].period.value
-	  score == required_rating_score
-	  msg := sprintf("The SonarQube metric %s stands at %s for project %s, falling short of the expected value.", [required_rating_name, score, input.metadata.sonarqube_projectKey])
-	  sugg := sprintf("Adhere to code security standards to improve score for project %s.", [input.metadata.sonarqube_projectKey])
-	  error := ""
+
+	deny[{"alertMsg": msg, "suggestion": sugg, "error": error, "fileApi": download_url}]{
+	score == required_rating_score
+	msg := sprintf("The SonarQube metric %s stands at %s for project %s, falling short of the expected value.", [required_rating_name, score, input.metadata.sonarqube_projectKey])
+	sugg := sprintf("Adhere to code security standards to improve score for project %s.", [input.metadata.sonarqube_projectKey])
+	error := ""
 	}`,
 
 	74: `
 	package opsmx
-
 	import future.keywords.in
-	
+
+	default score = ""
+
 	rating_map := {
-	  "A": "5.0",
-	  "B": "4.0",
-	  "C": "3.0",
-	  "D": "2.0",
-	  "E": "1.0"
+	"A": "1.0",
+	"B": "2.0",
+	"C": "3.0",
+	"D": "4.0",
+	"E": "5.0"
 	}
-	
+
 	required_rating_name := concat("", ["new_", lower(split(input.conditions[0].condition_name, " ")[1]), "_rating"])
 	required_rating_score := rating_map[split(input.conditions[0].condition_name, " ")[3]]
-	
-	request_url = sprintf("%s/api/measures/component?metricKeys=%s&component=%s", [input.metadata.ssd_secret.sonarQube_creds.url, required_rating_name, input.metadata.sonarqube_projectKey])
-	
+
+	complete_url = concat("",[input.metadata.toolchain_addr,"api/v1/scanResult?fileName=analysis_", input.metadata.owner, "_", input.metadata.repository, "_", input.metadata.build_id, "_sonarqube.json&scanOperation=sonarqubescan"])
+	download_url = concat("",["tool-chain/api/v1/scanResult?fileName=analysis_", input.metadata.owner, "_", input.metadata.repository, "_", input.metadata.build_id, "_sonarqube.json&scanOperation=sonarqubescan"] )
+
 	request = {
-		"method": "GET",
-		"url": request_url,
-		"headers": {
-			"Authorization": sprintf("Bearer %v", [input.metadata.ssd_secret.sonarQube_creds.token]),
-		},
-	}
-	default response = ""
-	response = http.send(request)
-	
-	deny[{"alertMsg": msg, "suggestion": sugg, "error": error}]{
-	  input.metadata.sonarqube_projectKey == ""
-	  msg := ""
-	  error := "Project name not provided."
-	  sugg := "Verify the integration of Sonarqube in SSD is configured properly."
-	}
-	
-	deny[{"alertMsg": msg, "suggestion": sugg, "error": error}]{
-	  response == ""
-	  msg := ""
-	  error := "Response not received."
-	  sugg := "Kindly verify the endpoint provided and the reachability of the endpoint."
-	}
-	
-	deny[{"alertMsg": msg, "suggestion": sugg, "error": error}]{
-	  response.status_code == 500
-	  msg := ""
-	  error := "Sonarqube host provided is not reponding or is not reachable." 
-	  sugg := "Kindly verify the configuration of sonarqube endpoint and reachability of the endpoint."
-	}
-	
-	deny[{"alertMsg": msg, "suggestion": sugg, "error": error}]{
-		response.status_code == 404
-		not contains(error_message, "Component key")
-		msg := ""
-		error := sprintf("%s %v", [response.status, response.body.errors[_].msg])
-		sugg := sprintf("Please add the Security metrics keys for the project %s.", [input.metadata.sonarqube_projectKey])
+			"method": "GET",
+			"url": complete_url
 	}
 
+	response = http.send(request)
+	score = [response.body.measures[i].period.value | response.body.measures[i].metric == "new_security_rating"][0]
+
 	deny[{"alertMsg": msg, "suggestion": sugg, "error": error}]{
-	  response.status_code == 404
-	  msg := ""
-	  error := sprintf("Error: 404 Not Found. Project not configured for repository %s.", [input.metadata.sonarqube_projectKey])
-	  sugg := sprintf("Please configure project %s in SonarQube.", [input.metadata.sonarqube_projectKey])
+	score == ""
+	msg := sprintf("Required Metric %v for sonarqube project could not be obtained.", [required_rating_name])
+	sugg := "Kindly verify if the token provided has permissions to read the quality metrics. Also, verify if the required quality metrics are available for the project."
+	error := sprintf("Required Metric %v for sonarqube project could not be obtained.", [required_rating_name])
 	}
-	
-	deny[{"alertMsg": msg, "suggestion": sugg, "error": error}]{
-	  response.status_code == 403
-	  error := sprintf("Error: 403 Forbidden. Provided Token does not have privileges to read status of project %s.", [input.metadata.sonarqube_projectKey])
-	  msg := ""
-	  sugg := sprintf("Kindly verify the access token provided is correct and have required privileges to read status of project %s.", [input.metadata.sonarqube_projectKey])
-	}
-	
-	deny[{"alertMsg": msg, "suggestion": sugg, "error": error}]{
-	  not response.status_code in [500, 404, 403, 200, 302]
-	  error := sprintf("Error: %v: %v", [response.status_code])
-	  msg := ""
-	  sugg := sprintf("Kindly rectify the error while fetching %s project status.", [input.metadata.sonarqube_projectKey])
-	}
-	
-	deny[{"alertMsg": msg, "suggestion": sugg, "error": error}]{
-	  response.status_code in [200, 302]
-	  score = response.body.component.measures[0].period.value
-	  score == required_rating_score
-	  msg := sprintf("The SonarQube metric %s stands at %s for project %s, falling short of the expected value.", [required_rating_name, score, input.metadata.sonarqube_projectKey])
-	  sugg := sprintf("Adhere to code security standards to improve score for project %s.", [input.metadata.sonarqube_projectKey])
-	  error := ""
+
+	deny[{"alertMsg": msg, "suggestion": sugg, "error": error, "fileApi": download_url}]{
+	score == required_rating_score
+	msg := sprintf("The SonarQube metric %s stands at %s for project %s, falling short of the expected value.", [required_rating_name, score, input.metadata.sonarqube_projectKey])
+	sugg := sprintf("Adhere to code security standards to improve score for project %s.", [input.metadata.sonarqube_projectKey])
+	error := ""
 	}`,
 
 	75: `
 	package opsmx
-
 	import future.keywords.in
-	
+
+	default score = ""
+
 	rating_map := {
-	  "A": "5.0",
-	  "B": "4.0",
-	  "C": "3.0",
-	  "D": "2.0",
-	  "E": "1.0"
+	"A": "1.0",
+	"B": "2.0",
+	"C": "3.0",
+	"D": "4.0",
+	"E": "5.0"
 	}
-	
+
 	required_rating_name := concat("", ["new_", lower(split(input.conditions[0].condition_name, " ")[1]), "_rating"])
 	required_rating_score := rating_map[split(input.conditions[0].condition_name, " ")[3]]
-	
-	request_url = sprintf("%s/api/measures/component?metricKeys=%s&component=%s", [input.metadata.ssd_secret.sonarQube_creds.url, required_rating_name, input.metadata.sonarqube_projectKey])
-	
+
+	complete_url = concat("",[input.metadata.toolchain_addr,"api/v1/scanResult?fileName=analysis_", input.metadata.owner, "_", input.metadata.repository, "_", input.metadata.build_id, "_sonarqube.json&scanOperation=sonarqubescan"])
+	download_url = concat("",["tool-chain/api/v1/scanResult?fileName=analysis_", input.metadata.owner, "_", input.metadata.repository, "_", input.metadata.build_id, "_sonarqube.json&scanOperation=sonarqubescan"] )
+
 	request = {
-		"method": "GET",
-		"url": request_url,
-		"headers": {
-			"Authorization": sprintf("Bearer %v", [input.metadata.ssd_secret.sonarQube_creds.token]),
-		},
-	}
-	default response = ""
-	response = http.send(request)
-	
-	deny[{"alertMsg": msg, "suggestion": sugg, "error": error}]{
-	  input.metadata.sonarqube_projectKey == ""
-	  msg := ""
-	  error := "Project name not provided."
-	  sugg := "Verify the integration of Sonarqube in SSD is configured properly."
-	}
-	
-	deny[{"alertMsg": msg, "suggestion": sugg, "error": error}]{
-	  response == ""
-	  msg := ""
-	  error := "Response not received."
-	  sugg := "Kindly verify the endpoint provided and the reachability of the endpoint."
-	}
-	
-	deny[{"alertMsg": msg, "suggestion": sugg, "error": error}]{
-	  response.status_code == 500
-	  msg := ""
-	  error := "Sonarqube host provided is not reponding or is not reachable." 
-	  sugg := "Kindly verify the configuration of sonarqube endpoint and reachability of the endpoint."
-	}
-	
-	deny[{"alertMsg": msg, "suggestion": sugg, "error": error}]{
-		response.status_code == 404
-		not contains(error_message, "Component key")
-		msg := ""
-		error := sprintf("%s %v", [response.status, response.body.errors[_].msg])
-		sugg := sprintf("Please add the Reliability metrics keys for the project %s.", [input.metadata.sonarqube_projectKey])
+			"method": "GET",
+			"url": complete_url
 	}
 
+	response = http.send(request)
+	score = [response.body.measures[i].period.value | response.body.measures[i].metric == "new_reliability_rating"][0]
+
 	deny[{"alertMsg": msg, "suggestion": sugg, "error": error}]{
-	  response.status_code == 404
-	  msg := ""
-	  error := sprintf("Error: 404 Not Found. Project not configured for repository %s.", [input.metadata.sonarqube_projectKey])
-	  sugg := sprintf("Please configure project %s in SonarQube.", [input.metadata.sonarqube_projectKey])
+	score == ""
+	msg := sprintf("Required Metric %v for sonarqube project could not be obtained.", [required_rating_name])
+	sugg := "Kindly verify if the token provided has permissions to read the quality metrics. Also, verify if the required quality metrics are available for the project."
+	error := sprintf("Required Metric %v for sonarqube project could not be obtained.", [required_rating_name])
 	}
-	
-	deny[{"alertMsg": msg, "suggestion": sugg, "error": error}]{
-	  response.status_code == 403
-	  error := sprintf("Error: 403 Forbidden. Provided Token does not have privileges to read status of project %s.", [input.metadata.sonarqube_projectKey])
-	  msg := ""
-	  sugg := sprintf("Kindly verify the access token provided is correct and have required privileges to read status of project %s.", [input.metadata.sonarqube_projectKey])
-	}
-	
-	deny[{"alertMsg": msg, "suggestion": sugg, "error": error}]{
-	  not response.status_code in [500, 404, 403, 200, 302]
-	  error := sprintf("Error: %v: %v", [response.status_code])
-	  msg := ""
-	  sugg := sprintf("Kindly rectify the error while fetching %s project status.", [input.metadata.sonarqube_projectKey])
-	}
-	
-	deny[{"alertMsg": msg, "suggestion": sugg, "error": error}]{
-	  response.status_code in [200, 302]
-	  score = response.body.component.measures[0].period.value
-	  score == required_rating_score
-	  msg := sprintf("The SonarQube metric %s stands at %s for project %s, falling short of the expected value.", [required_rating_name, score, input.metadata.sonarqube_projectKey])
-	  sugg := sprintf("Adhere to code security standards to improve score for project %s.", [input.metadata.sonarqube_projectKey])
-	  error := ""
+
+	deny[{"alertMsg": msg, "suggestion": sugg, "error": error, "fileApi": download_url}]{
+	score == required_rating_score
+	msg := sprintf("The SonarQube metric %s stands at %s for project %s, falling short of the expected value.", [required_rating_name, score, input.metadata.sonarqube_projectKey])
+	sugg := sprintf("Adhere to code security standards to improve score for project %s.", [input.metadata.sonarqube_projectKey])
+	error := ""
 	}`,
 
 	76: `
@@ -9728,7 +9145,7 @@ var scriptMap = map[int]string{
 	response.status_code == 404
 	msg := "Mentioned branch for Repository not found while trying to fetch repository branch protection policy configuration."
 	sugg := "Kindly check if the repository provided is correct and the access token has rights to read repository branch protection policy configuration."
-	error := "Repo name or Organisation is incorrect."
+	error := "Either the repository could not be found or the restriction policies are not configured, thus could not be fetched."
 	}
 
 	deny[{"alertMsg": msg, "suggestion": sugg, "error": error}]{
@@ -11569,6 +10986,190 @@ var scriptMap = map[int]string{
 	msg := sprintf("Github actions workflow permissions are write permissions for %v/%v repository", [input.metadata.owner, input.metadata.repository])
 	sugg := sprintf("Adhere to the company policy by the Github actions workflow permission should be read for %v/%v repository.", [input.metadata.owner, input.metadata.repository])
 	error := ""
+	}`,
+
+	329: `
+	package opsmx
+
+	default count_blocker_issues = -1
+
+	complete_url = concat("",[input.metadata.toolchain_addr,"api/v1/scanResult?fileName=analysis_", input.metadata.owner, "_", input.metadata.repository, "_", input.metadata.build_id, "_sonarqube.json&scanOperation=sonarqubescan"])
+	download_url = concat("",["tool-chain/api/v1/scanResult?fileName=analysis_", input.metadata.owner, "_", input.metadata.repository, "_", input.metadata.build_id, "_sonarqube.json&scanOperation=sonarqubescan"] )
+
+
+	request = {
+			"method": "GET",
+			"url": complete_url
+	}
+
+	response = http.send(request)
+	blocker_issues = response.body.blockerIssues
+	count_blocker_issues = count(blocker_issues)
+
+	deny[{"alertMsg": msg, "suggestion": sugg, "error": error}]{
+	count_blocker_issues == -1
+	msg = "List of Blocker Issues for Sonarqube Project could not be accessed."
+	sugg = "Kindly check if the Sonarqube token is configured and has permissions to read issues of the project."
+	error = "Failed while fetching blocker issues from Sonarqube."
+	}
+
+	deny[{"alertMsg": msg, "suggestion": sugg, "error": error, "fileApi": download_url}]{
+	count(blocker_issues) > 0
+	some idx
+	msg = blocker_issues[idx].message
+	sugg = "Kindly refer to the suggested resolutions by Sonarqube. For more details about the error, please refer to the detailed scan results."
+	error = ""
+	}`,
+
+	330: `
+	package opsmx
+
+	default count_critical_issues = -1
+
+	complete_url = concat("",[input.metadata.toolchain_addr,"api/v1/scanResult?fileName=analysis_", input.metadata.owner, "_", input.metadata.repository, "_", input.metadata.build_id, "_sonarqube.json&scanOperation=sonarqubescan"])
+	download_url = concat("",["tool-chain/api/v1/scanResult?fileName=analysis_", input.metadata.owner, "_", input.metadata.repository, "_", input.metadata.build_id, "_sonarqube.json&scanOperation=sonarqubescan"] )
+
+
+	request = {
+			"method": "GET",
+			"url": complete_url
+	}
+
+	response = http.send(request)
+	critical_issues = response.body.criticalIssues
+	count_critical_issues = count(critical_issues)
+
+	deny[{"alertMsg": msg, "suggestion": sugg, "error": error}]{
+	count_critical_issues == -1
+	msg = "List of Critical Issues for Sonarqube Project could not be accessed."
+	sugg = "Kindly check if the Sonarqube token is configured and has permissions to read issues of the project."
+	error = "Failed while fetching critical issues from Sonarqube."
+	}
+
+	deny[{"alertMsg": msg, "suggestion": sugg, "error": error, "fileApi": download_url}]{
+	count_critical_issues > 0
+	some idx
+	msg = critical_issues[idx].message
+	sugg = "Kindly refer to the suggested resolutions by Sonarqube. For more details about the error, please refer to the detailed scan results."
+	error = ""
+	}`,
+
+	331: `
+	package opsmx
+
+	default facetvalues := []
+
+	complete_url = concat("",[input.metadata.toolchain_addr,"api/v1/scanResult?fileName=analysis_", input.metadata.owner, "_", input.metadata.repository, "_", input.metadata.build_id, "_sonarqube.json&scanOperation=sonarqubescan"])
+	download_url = concat("",["tool-chain/api/v1/scanResult?fileName=analysis_", input.metadata.owner, "_", input.metadata.repository, "_", input.metadata.build_id, "_sonarqube.json&scanOperation=sonarqubescan"] )
+
+
+	request = {
+			"method": "GET",
+			"url": complete_url
+	}
+
+	response = http.send(request)
+	facetvalues := response.body.facets[_].values
+
+	critical_count := [facetvalues[i].count | facetvalues[i].val == "CRITICAL"]
+	blocker_count := [facetvalues[i].count | facetvalues[i].val == "BLOCKER"]
+
+	deny[{"alertMsg": msg, "suggestion": sugg, "error": error}]{
+	count(facetvalues) == 0
+	msg = "No facet values found for severities."
+	sugg = "Kindly check if the Sonarqube token is configured and has permissions to read issues of the project."
+	error = "Failed while fetching severity count from Sonarqube."
+	}
+
+	deny[{"alertMsg": msg, "suggestion": sugg, "error": error, "fileApi": download_url}]{
+	count(facetvalues) > 0
+	critical_count[0] > 0
+	msg = sprintf("Blocker or Critical issues found during SAST scan for repository %v/%v and branch %v. \nBlocker Issues: %v \nCritical Issues: %v", [input.metadata.owner, input.metadata.repository, input.metadata.branch, blocker_count[0], critical_count[0]])
+	sugg = "Kindly refer to the list of issues reported in SAST scan and their resolutions."
+	error = ""
+	}
+
+	deny[{"alertMsg": msg, "suggestion": sugg, "error": error, "fileApi": download_url}]{
+	count(facetvalues) > 0
+	blocker_count[0] > 0
+	msg = sprintf("Blocker or Critical issues found during SAST scan for repository %v/%v and branch %v. \nBlocker Issues: %v \nCritical Issues: %v", [input.metadata.owner, input.metadata.repository, input.metadata.branch, blocker_count[0], critical_count[0]])
+	sugg = "Kindly refer to the list of issues reported in SAST scan and their resolutions."
+	error = ""
+	}`,
+
+	332: `
+	package opsmx
+
+	default facetvalues := []
+	complete_url = concat("",[input.metadata.toolchain_addr,"api/v1/scanResult?fileName=analysis_", input.metadata.owner, "_", input.metadata.repository, "_", input.metadata.build_id, "_sonarqube.json&scanOperation=sonarqubescan"])
+	download_url = concat("",["tool-chain/api/v1/scanResult?fileName=analysis_", input.metadata.owner, "_", input.metadata.repository, "_", input.metadata.build_id, "_sonarqube.json&scanOperation=sonarqubescan"] )
+
+
+	request = {
+			"method": "GET",
+			"url": complete_url
+	}
+
+	response = http.send(request)
+	facetvalues := response.body.facets[_].values
+
+	major_count := [facetvalues[i].count | facetvalues[i].val == "MAJOR"]
+
+	deny[{"alertMsg": msg, "suggestion": sugg, "error": error}]{
+	count(facetvalues) == 0
+	msg = "No facet values found for severities."
+	sugg = "Kindly check if the Sonarqube token is configured and has permissions to read issues of the project."
+	error = "Failed while fetching severity count from Sonarqube."
+	}
+
+	deny[{"alertMsg": msg, "suggestion": sugg, "error": error, "fileApi": download_url}]{
+	count(facetvalues) > 0
+	major_count[0] > 0
+	msg = sprintf("Major issues found during SAST scan for repository %v/%v and branch %v. \nMajor Issues: %v", [input.metadata.owner, input.metadata.repository, input.metadata.branch, major_count[0]])
+	sugg = "Kindly refer to the list of issues reported in SAST scan and their resolutions."
+	error = ""
+	}`,
+
+	333: `
+	package opsmx
+
+	default facetvalues := []
+	complete_url = concat("",[input.metadata.toolchain_addr,"api/v1/scanResult?fileName=analysis_", input.metadata.owner, "_", input.metadata.repository, "_", input.metadata.build_id, "_sonarqube.json&scanOperation=sonarqubescan"])
+	download_url = concat("",["tool-chain/api/v1/scanResult?fileName=analysis_", input.metadata.owner, "_", input.metadata.repository, "_", input.metadata.build_id, "_sonarqube.json&scanOperation=sonarqubescan"] )
+
+
+	request = {
+			"method": "GET",
+			"url": complete_url
+	}
+
+	response = http.send(request)
+	facetvalues := response.body.facets[_].values
+
+	info_count := [facetvalues[i].count | facetvalues[i].val == "INFO"]
+	minor_count := [facetvalues[i].count | facetvalues[i].val == "MINOR"]
+
+	deny[{"alertMsg": msg, "suggestion": sugg, "error": error}]{
+	count(facetvalues) == 0
+	msg = "No facet values found for severities."
+	sugg = "Kindly check if the Sonarqube token is configured and has permissions to read issues of the project."
+	error = "Failed while fetching severity count from Sonarqube."
+	}
+
+	deny[{"alertMsg": msg, "suggestion": sugg, "error": error, "fileApi": download_url}]{
+	count(facetvalues) > 0
+	minor_count[0] > 0
+	msg = sprintf("Minor issues found during SAST scan for repository %v/%v and branch %v. \nMinor Issues: %v \nInfo Count : %v", [input.metadata.owner, input.metadata.repository, input.metadata.branch, minor_count[0], info_count[0]])
+	sugg = "Kindly refer to the list of issues reported in SAST scan and their resolutions."
+	error = ""
+	}
+
+	deny[{"alertMsg": msg, "suggestion": sugg, "error": error, "fileApi": download_url}]{
+	count(facetvalues) > 0
+	info_count[0] > 0
+	msg = sprintf("Minor issues found during SAST scan for repository %v/%v and branch %v. \nMinor Issues: %v \nInfo Count : %v", [input.metadata.owner, input.metadata.repository, input.metadata.branch, minor_count[0], info_count[0]])
+	sugg = "Kindly refer to the list of issues reported in SAST scan and their resolutions."
+	error = ""
 	}`,
 }
 
@@ -16492,6 +16093,81 @@ var policyDefinition = []string{
 		 "suggestion":""
 	}
 	`,
+	`
+	{
+		 "policyId":"329",
+		 "orgId":"1",
+		 "policyName":"Sonarqube Blocker Issues Policy",
+		 "category":"SAST",
+		 "stage":"source",
+		 "description":"Reports various Blocker severity issues found during SAST Scans in Sonarqube.",
+		 "scheduled_policy":false,
+		 "scriptId":"329",
+		 "variables":"",
+		 "conditionName":"",
+		 "suggestion":""
+	}
+	`,
+	`
+	{
+		 "policyId":"330",
+		 "orgId":"1",
+		 "policyName":"Sonarqube Critical Issues Policy",
+		 "category":"SAST",
+		 "stage":"source",
+		 "description":"Reports various Critical severity issues found during SAST Scans in Sonarqube.",
+		 "scheduled_policy":false,
+		 "scriptId":"330",
+		 "variables":"",
+		 "conditionName":"",
+		 "suggestion":""
+	}
+	`,
+	`
+	{
+		 "policyId":"331",
+		 "orgId":"1",
+		 "policyName":"Sonarqube Blocker/Critical Issues Status Policy",
+		 "category":"SAST",
+		 "stage":"source",
+		 "description":"Reports number of Blocker or Critical severity issues found during SAST Scans in Sonarqube.",
+		 "scheduled_policy":false,
+		 "scriptId":"331",
+		 "variables":"",
+		 "conditionName":"",
+		 "suggestion":""
+	}
+	`,
+	`
+	{
+		 "policyId":"332",
+		 "orgId":"1",
+		 "policyName":"Sonarqube Major Issues Status Policy",
+		 "category":"SAST",
+		 "stage":"source",
+		 "description":"Reports number of Major severity issues found during SAST Scans in Sonarqube.",
+		 "scheduled_policy":false,
+		 "scriptId":"332",
+		 "variables":"",
+		 "conditionName":"",
+		 "suggestion":""
+	}
+	`,
+	`
+	{
+		 "policyId":"333",
+		 "orgId":"1",
+		 "policyName":"Sonarqube Info/Minor Issues Status Policy",
+		 "category":"SAST",
+		 "stage":"source",
+		 "description":"Reports number of Info or Minor severity issues found during SAST Scans in Sonarqube.",
+		 "scheduled_policy":false,
+		 "scriptId":"333",
+		 "variables":"",
+		 "conditionName":"",
+		 "suggestion":""
+	}
+	`,
 }
 
 var policyEnforcement = []string{
@@ -17128,9 +16804,9 @@ var policyEnforcement = []string{
   }`,
 	`{
       "policyId": "51",
-      "severity": "Critical",
+      "severity": "Medium",
       "action": "Alert",
-      "status": true,
+      "status": false,
 	  "datasourceTool": "sonarqube",
       "tags": [
 		"10",
@@ -17141,9 +16817,9 @@ var policyEnforcement = []string{
   }`,
 	`{
 	"policyId": "51",
-	"severity": "Critical",
+	"severity": "Medium",
 	"action": "Alert",
-	"status": true,
+	"status": false,
 	"datasourceTool": "semgrep",
 	"tags": [
 		"5",
@@ -20176,6 +19852,71 @@ var policyEnforcement = []string{
 		   "29"
 		]
 	 }`,
+	`{
+		"policyId": "329",
+		"severity": "Critical",
+		"action": "Alert",
+		"conditionValue": "4.0",
+		"status": true,
+		"datasourceTool": "sonarqube",
+		"tags": [
+		  "12",
+		  "11",
+		  "10"
+		]
+	}`,
+	`{
+		"policyId": "330",
+		"severity": "High",
+		"action": "Alert",
+		"conditionValue": "4.0",
+		"status": true,
+		"datasourceTool": "sonarqube",
+		"tags": [
+		  "12",
+		  "11",
+		  "10"
+		]
+	}`,
+	`{
+		"policyId": "331",
+		"severity": "High",
+		"action": "Alert",
+		"conditionValue": "4.0",
+		"status": true,
+		"datasourceTool": "sonarqube",
+		"tags": [
+		  "12",
+		  "11",
+		  "10"
+		]
+	}`,
+	`{
+		"policyId": "332",
+		"severity": "Medium",
+		"action": "Alert",
+		"conditionValue": "4.0",
+		"status": true,
+		"datasourceTool": "sonarqube",
+		"tags": [
+		  "12",
+		  "11",
+		  "10"
+		]
+	}`,
+	`{
+		"policyId": "333",
+		"severity": "Low",
+		"action": "Alert",
+		"conditionValue": "4.0",
+		"status": true,
+		"datasourceTool": "sonarqube",
+		"tags": [
+		  "12",
+		  "11",
+		  "10"
+		]
+	}`,
 }
 
 var tagPolicy = []string{

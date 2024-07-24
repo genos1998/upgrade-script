@@ -16,6 +16,7 @@ type Configuration struct {
 	ProdDgraphToken        string `json:"prodDgraphToken,omitempty" yaml:"prodDgraphToken,omitempty"`
 	ExpDgraphToken         string `json:"expDgraphToken,omitempty" yaml:"expDgraphToken,omitempty"`
 	UpgradeToVersion       string `json:"upgradeToVersion,omitempty" yaml:"upgradeToVersion,omitempty"`
+	UpgradeFromVersion     string `json:"upgradeFromVersion,omitempty" yaml:"upgradeFromVersion,omitempty"`
 	RemoteDgraphRestoreUrl string `json:"remoteDgraphRestoreUrl,omitempty" yaml:"remoteDgraphRestoreUrl,omitempty"`
 }
 
@@ -25,9 +26,10 @@ const (
 )
 
 var (
-	Conf             *Configuration
-	TokenVerifier    *ssdjwtauth.Verifier
-	UpgradeToVersion SchemaOrder
+	Conf               *Configuration
+	TokenVerifier      *ssdjwtauth.Verifier
+	UpgradeToVersion   SchemaOrder
+	UpgradeFromVersion SchemaOrder
 )
 
 func readFilePath(path string) ([]byte, error) {
@@ -80,7 +82,14 @@ func LoadConfigurationFile(confPath string) {
 	var ok bool
 	UpgradeToVersion, ok = schemaOrderMap[Conf.UpgradeToVersion]
 	if !ok {
-		logger.Logger.Sugar().Fatalw("unrecognized schema version provided. Please provide in format MonthYYYY eg November2024")
+		logger.Logger.Sugar().Fatalw("unrecognized schema upgradeTo version provided. Please provide in format MonthYYYY eg November2024")
+	}
+
+	if Conf.UpgradeFromVersion != "" {
+		UpgradeFromVersion, ok = schemaOrderMap[Conf.UpgradeFromVersion]
+		if !ok {
+			logger.Logger.Sugar().Fatalw("unrecognized schema upgradeFrom version provided. Please provide in format MonthYYYY eg November2024")
+		}
 	}
 
 }
